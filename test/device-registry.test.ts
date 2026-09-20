@@ -240,3 +240,17 @@ test('device admin accepts a bounded custom pairing expiry', async (t) => {
     io: { question: async () => '', write: () => {} },
   }), /1 to 60 minutes/);
 });
+
+test('device admin preserves a private public-entry path in the pairing link', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'codex-anywhere-device-pair-path-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const registry = new DeviceRegistry(join(directory, 'devices.json'));
+  let pairingUrl = '';
+  await runDeviceAdmin({
+    registry,
+    args: ['pair', 'https://codex.example.com/private-entry'],
+    renderQrCode: async (value) => { pairingUrl = value; return '<qr>'; },
+    io: { question: async () => '', write: () => {} },
+  });
+  assert.match(pairingUrl, /^https:\/\/codex\.example\.com\/private-entry\/#pair=v1\./);
+});

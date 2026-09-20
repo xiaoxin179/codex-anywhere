@@ -244,7 +244,9 @@ function normalizePublicUrl(value: unknown) {
     || parsed.hash) {
     throw new Error('The public Web URL must use http:// or https:// without credentials, query, or fragment.');
   }
-  parsed.pathname = '/';
+  parsed.pathname = parsed.pathname === '/'
+    ? '/'
+    : `${parsed.pathname.replace(/\/+$/, '')}/`;
   return parsed;
 }
 
