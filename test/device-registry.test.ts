@@ -254,3 +254,19 @@ test('device admin preserves a private public-entry path in the pairing link', a
   });
   assert.match(pairingUrl, /^https:\/\/codex\.example\.com\/private-entry\/#pair=v1\./);
 });
+
+test('device admin can return a single machine-readable pairing result', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'codex-anywhere-device-pair-json-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const registry = new DeviceRegistry(join(directory, 'devices.json'));
+  let output = '';
+  await runDeviceAdmin({
+    registry,
+    args: ['pair-json', 'https://codex.example.com/private-entry', '60'],
+    io: { question: async () => '', write: (text) => { output += text; } },
+  });
+  const result = JSON.parse(output);
+  assert.equal(result.expiresInMinutes, 60);
+  assert.match(result.pairingUrl, /^https:\/\/codex\.example\.com\/private-entry\/#pair=v1\./);
+  assert.equal(output.trim().split('\n').length, 1);
+});

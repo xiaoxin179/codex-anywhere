@@ -78,6 +78,8 @@ Usage: ./scripts/relay.sh <command>
   pending            List pending devices
   pair <public-url> [minutes]
                       Create a 1-60 minute, single-use browser pairing link (default: 10)
+  pair-json <public-url> [minutes]
+                      Create a pairing link and print one machine-readable JSON line
   devices [--json]   List approved devices with connection activity
   revoke [index|id] [--yes]
                      Select and revoke an approved device
@@ -123,6 +125,12 @@ case "$command_name" in
     [ "$#" -ge 1 ] && [ "$#" -le 2 ] \
       || die 'Usage: ./scripts/relay.sh pair https://codex.example.com [minutes]'
     run_admin pair "$@"
+    ;;
+  pair-json)
+    [ "$#" -ge 1 ] && [ "$#" -le 2 ] \
+      || die 'Usage: ./scripts/relay.sh pair-json https://codex.example.com [minutes]'
+    require_compose
+    docker compose exec -T bridge node build/server/device-admin.js pair-json "$@"
     ;;
   devices)
     if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && [ "$1" != '--json' ]; }; then

@@ -159,12 +159,16 @@ export async function runDeviceAdmin(options: DeviceAdminOptions = {}) {
     close: () => readline!.close(),
   };
   try {
-    if (args[0] === 'pair') {
+    if (args[0] === 'pair' || args[0] === 'pair-json') {
       const publicUrl = normalizePublicUrl(args[1] || process.env.BRIDGE_PUBLIC_URL);
       const expiryMinutes = pairingMinutes(args[2]);
       const pairing = registry.createBrowserPairing(Date.now(), expiryMinutes * 60_000);
       publicUrl.hash = browserPairingFragment(pairing.credential);
       const pairingUrl = publicUrl.toString();
+      if (args[0] === 'pair-json') {
+        operator.write(`${JSON.stringify({ pairingUrl, expiresInMinutes: expiryMinutes })}\n`);
+        return 'pairing-created';
+      }
       const renderQrCode = options.renderQrCode
         || ((value: string) => QRCode.toString(value, { type: 'terminal', small: true, errorCorrectionLevel: 'M' }));
       operator.write(isChinese
