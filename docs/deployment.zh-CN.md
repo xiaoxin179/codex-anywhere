@@ -104,10 +104,10 @@ $connectorToken = Read-Host 'Connector token' -AsSecureString
 程序不可用时会回退到登录快捷方式。
 
 新会话没有默认工作目录，需要在 Web 界面选择项目。`-AllowedRoots` 可选，默认只允许连接器仓库；
-需要选择其他项目目录或预览其中的位图时才增加根目录；文本类文件预览不需要。`-AllowAnyFileDownload`、`-EnableNetworkAccess` 和
+需要选择其他项目目录或预览其中的本机文件时才增加根目录。`-AllowAnyFileDownload`、`-EnableNetworkAccess` 和
 `-AllowFullAccess` 都是显式开关。
 
-Markdown、SVG、源代码、配置和文本预览支持连接器账号可读的任意绝对路径，保留 2 MiB、UTF-8 和类型校验；位图预览仍受根目录限制。`-AllowAnyFileDownload` 只控制确认下载的目录范围。需要在 Web 界面使用其他项目树时，请用
+Markdown、SVG、源代码、配置、文本和位图预览都必须位于允许的根目录内，并保留原有大小、UTF-8 和类型校验。`-AllowAnyFileDownload` 只控制确认下载的目录范围，不扩大预览范围。需要在 Web 界面使用其他项目树时，请用
 完整的 `-AllowedRoots` 列表重新运行安装程序。
 
 安装多个连接器时，请为每个节点使用稳定、容易识别的路由：
@@ -234,7 +234,7 @@ Relay 在设备注册表旁单独写入私有 `devices.json.activity.json`，每
 | Docker 因 package.json 权限错误退出 | 使用 v0.3.0 重建，Dockerfile 已为非 root 运行账号设置包元数据读取权限；不要公开私有配置或改用 root 绕过 |
 | 容器健康状态仍是 starting | 参考配置每 30 秒探测一次，启动宽限期为 10 秒；检查容器状态和日志，等待首轮探测后再判断失败 |
 | 支持的代码链接仍然直接下载 | 更新两端仓库、重启连接器，再完整刷新或重新打开浏览器页面 |
-| 预览弹出但提示失败 | 文本预览需为不超过 2 MiB 的普通 UTF-8 文件、受支持的文件名/类型，且服务账号有读取权限；工作区根目录限制只适用于位图预览 |
+| 预览弹出但提示失败 | 确认文件位于允许的根目录内；文本预览还需为不超过 2 MiB 的普通 UTF-8 文件、受支持的文件名/类型，且服务账号有读取权限 |
 | 代码可读但没有语法着色 | 该语言不在按需高亮子集内，或文件超过 512 KiB 高亮上限；此时安全显示纯代码属于预期行为 |
 | 二进制、`.env`、证书或密钥文件进入下载流程 | 敏感、二进制和未识别格式有意不提供内联文本预览 |
 | 上下文环没有进度 | 更新两端仓库并完整刷新浏览器；所选会话还必须包含 Codex 提供的 Token 统计 |
@@ -245,7 +245,7 @@ Relay 在设备注册表旁单独写入私有 `devices.json.activity.json`，每
 | 预期的执行环境没有出现 | 确认对应 systemd/Windows 连接器正在运行且已批准，再等待转发服务刷新在线状态 |
 | Linux 会话完成第一轮后无法继续 | 确认 `CODEX_CONNECTOR_MODE=headless`，更新仓库并重启 systemd 服务 |
 
-预览权限和下载权限相互独立。文本类文件不限根目录；位图仍受根目录限制。`-AllowAnyFileDownload` 只影响确认下载。
+预览权限和下载权限相互独立。文本类文件和位图都受根目录限制；`-AllowAnyFileDownload` 只影响确认下载。
 
 ## 支持的配置
 
@@ -255,7 +255,7 @@ Relay 在设备注册表旁单独写入私有 `devices.json.activity.json`，每
 | --- | --- | --- |
 | `BRIDGE_CONNECTOR_TOKEN` | `relay.sh setup` 自动生成 | 只接受连接器使用的密钥，至少 32 个字符 |
 | `BRIDGE_SESSION_MAX_AGE_MS` | `3600000` | 已认证连接重新鉴权前的最长生存期 |
-| `BRIDGE_TRUST_PROXY` | 参考 Compose 为 `1` | 只信任会覆盖客户端地址头的本机代理；没有此类代理时设为 `0` |
+| `BRIDGE_TRUST_PROXY` | `0` | 只有会覆盖客户端地址头的可信代理是唯一入口时才设为 `1` |
 | `CODEX_UI_LANGUAGE` | `zh-CN` | Web 与设备管理命令语言：`zh-CN` 或 `en` |
 
 连接器安装参数：
@@ -417,8 +417,8 @@ ssl_certificate_key /etc/letsencrypt/live/codex.example.com/privkey.pem;
 
 保留模板中的 `/ws` 精确匹配、HTTP/1.1、`Upgrade` / `Connection` 请求头和长连接超时。
 这些设置负责将 WSS 连接升级并转发到 Relay，参见 [Nginx WebSocket 代理文档](https://nginx.org/en/docs/http/websocket.html)。
-模板还覆盖客户端地址转发头，与参考 Compose 的 `BRIDGE_TRUST_PROXY=1` 配合；若在 Nginx 前再加一层代理，
-需要重新确定可信代理和真实客户端地址规则。
+模板会覆盖客户端地址转发头。确认 Nginx 已成为唯一入口、3300 仍只绑定回环地址后，在 `.env` 中设置
+`BRIDGE_TRUST_PROXY=1` 并重启 Relay，使认证限流能识别真实客户端地址。若在 Nginx 前再加一层代理，需要重新确定可信代理和真实客户端地址规则。
 
 ```bash
 nginx -t && systemctl reload nginx

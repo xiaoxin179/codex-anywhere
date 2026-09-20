@@ -114,7 +114,7 @@ results through summary RPCs. A displayed reference never bypasses canonical-pat
   is not stored by the relay. The Web client tries to keep the screen awake; while hidden or disconnected,
   it stops requesting new chunks and resumes after the same browser reconnects.
 - Local text previews require an explicit click, accept only allowlisted Markdown, source, config, or
-  plain-text names, and may read any absolute path available to the connector service account, independently of workspace roots and download settings. The connector resolves the
+  plain-text names, and must resolve inside a configured allowed root. The connector resolves the
   canonical file path, requires a regular UTF-8 file no larger than 2 MiB, rejects embedded NUL bytes and
   changing snapshots, and intentionally excludes sensitive extensions such as `.env`, `.pem`, and `.key`.
 - Source previews load the common syntax-highlighting runtime only when needed. Highlighted markup is
@@ -157,7 +157,7 @@ results through summary RPCs. A displayed reference never bypasses canonical-pat
 
 Broad `-AllowedRoots`, `-AllowAnyFileDownload`, `-EnableNetworkAccess`, and `-AllowFullAccess` options increase connector
 authority and are disabled or narrow by default. `-AllowAnyFileDownload` expands only confirmed downloads;
-raster image previews retain their root checks, while text-based previews already accept any readable absolute path. Full access also allows Codex operations beyond read-only preview, subject to the connector service account’s OS permissions.
+text and raster previews retain their allowed-root checks. Full access also allows Codex operations beyond read-only preview, subject to the connector service account’s OS permissions.
 
 ## Trust boundary and honest limits
 

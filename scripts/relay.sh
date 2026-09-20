@@ -31,6 +31,8 @@ ensure_environment() {
     [ "${#token}" -eq 64 ] || die 'Could not generate the connector token.'
     {
       printf 'BRIDGE_CONNECTOR_TOKEN=%s\n' "$token"
+      printf 'BRIDGE_TRUST_PROXY=0\n'
+      printf 'BRIDGE_SESSION_MAX_AGE_MS=3600000\n'
       printf 'CODEX_UI_LANGUAGE=%s\n' "${CODEX_UI_LANGUAGE:-zh-CN}"
     } > "$ENV_FILE"
     chmod 600 "$ENV_FILE"

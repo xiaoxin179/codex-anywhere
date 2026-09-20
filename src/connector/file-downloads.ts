@@ -176,8 +176,12 @@ export class DownloadManager {
       }
       throw error;
     });
-    // Explicit text previews may read any file available to this connector's OS user.
-    // Workspace roots still govern task directories and the separate download policy.
+    // Previewing a link must not become a way to read arbitrary files owned by
+    // the connector account. Generated artifacts have their own roots added by
+    // the connector entry point, so normal previews continue to work.
+    if (!await pathAllowedByRoots(path, this.allowedRoots)) {
+      throw new Error(`${errorPrefix}_path_not_allowed`);
+    }
     const handle = await open(path, 'r').catch((error) => {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') throw new Error(`${errorPrefix}_not_found`);
       throw error;
