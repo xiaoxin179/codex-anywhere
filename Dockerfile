@@ -17,10 +17,10 @@ COPY --chmod=644 package.json package-lock.json ./
 RUN npm ci --omit=dev --registry="$NPM_REGISTRY"
 COPY --from=web-build /app/build ./build
 COPY --from=web-build /app/dist ./dist
-RUN mkdir -p /data && chown node:node /data
+RUN mkdir -p /data && chown 1000:1000 /data
 ENV HOST=0.0.0.0
 ENV PORT=3300
 EXPOSE 3300
-USER node
+USER 1000:1000
 ENTRYPOINT ["node"]
 CMD ["build/server/index.js"]
