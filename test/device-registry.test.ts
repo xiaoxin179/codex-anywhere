@@ -130,6 +130,30 @@ test('device administration revokes an approved device without printing identity
   assert.doesNotMatch(output, new RegExp(identity.publicKey));
 });
 
+test('device administration revokes the exact approved device by stable id', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'codex-anywhere-device-revoke-id-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const registry = new DeviceRegistry(join(directory, 'devices.json'));
+  const first = createDeviceIdentity();
+  const second = createDeviceIdentity();
+  for (const [identity, label] of [[first, 'First'], [second, 'Second']] as const) {
+    const pending = registry.requestPairing({
+      role: 'client', device: { ...identity, signature: '0'.repeat(128), label },
+      address: '203.0.113.14',
+    });
+    registry.approve(pending.requestId);
+  }
+  const result = await runDeviceAdmin({
+    registry,
+    args: ['revoke', first.id, '--yes'],
+    io: { question: async () => '', write: () => {} },
+  });
+
+  assert.equal(result, 'revoked');
+  assert.equal(registry.isApproved('client', first), false);
+  assert.equal(registry.isApproved('client', second), true);
+});
+
 test('one-time browser pairing expires, cannot be reused, and stores no bearer secret', async (t) => {
   const directory = await mkdtemp(join(tmpdir(), 'codex-anywhere-browser-pairing-'));
   t.after(() => rm(directory, { recursive: true, force: true }));

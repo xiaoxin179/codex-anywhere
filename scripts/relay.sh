@@ -79,7 +79,8 @@ Usage: ./scripts/relay.sh <command>
   pair <public-url> [minutes]
                       Create a 1-60 minute, single-use browser pairing link (default: 10)
   devices [--json]   List approved devices with connection activity
-  revoke             Select and revoke an approved device
+  revoke [index|id] [--yes]
+                     Select and revoke an approved device
   update             Pull main, rebuild, restart, and verify the relay
   help               Show this help
 EOF
@@ -131,8 +132,14 @@ case "$command_name" in
     docker compose exec -T bridge node build/server/device-admin.js list-approved "$@"
     ;;
   revoke)
-    [ "$#" -eq 0 ] || die 'revoke does not accept arguments.'
-    run_admin revoke
+    [ "$#" -le 2 ] || die 'Usage: ./scripts/relay.sh revoke [index|id] [--yes]'
+    if [ "$#" -eq 1 ] && [ "$1" = '--yes' ]; then
+      die 'Usage: ./scripts/relay.sh revoke [index|id] [--yes]'
+    fi
+    if [ "$#" -eq 2 ] && [ "$2" != '--yes' ]; then
+      die 'Usage: ./scripts/relay.sh revoke [index|id] [--yes]'
+    fi
+    run_admin revoke "$@"
     ;;
   update)
     [ "$#" -eq 0 ] || die 'update does not accept arguments.'

@@ -107,7 +107,7 @@ async function revokeApprovedDevice({
   const index = Number(argument);
   let selected = Number.isInteger(index) && index >= 1 && index <= devices.length
     ? devices[index - 1]
-    : undefined;
+    : devices.find((device) => device.id === argument);
   if (!selected) {
     const answer = (await operator.question(isChinese
       ? `请输入要撤销的设备序号（1-${devices.length}，输入 q 退出）：`
