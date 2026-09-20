@@ -18,6 +18,8 @@ import {
 
 const PAIRING_TTL_MS = 15 * 60_000;
 const BROWSER_PAIRING_TTL_MS = 10 * 60_000;
+const BROWSER_PAIRING_MIN_TTL_MS = 60_000;
+const BROWSER_PAIRING_MAX_TTL_MS = 60 * 60_000;
 const MAX_PENDING_DEVICES = 32;
 const MAX_BROWSER_PAIRINGS = 8;
 
@@ -185,14 +187,17 @@ export class DeviceRegistry {
     return this.state.approved.map((entry) => ({ ...entry }));
   }
 
-  createBrowserPairing(now = Date.now()) {
+  createBrowserPairing(now = Date.now(), ttlMs = BROWSER_PAIRING_TTL_MS) {
+    if (!Number.isInteger(ttlMs) || ttlMs < BROWSER_PAIRING_MIN_TTL_MS || ttlMs > BROWSER_PAIRING_MAX_TTL_MS) {
+      throw new Error('browser_pairing_ttl_invalid');
+    }
     this.refresh();
     this.prune(false, now);
     while (this.state.browserPairings.length >= MAX_BROWSER_PAIRINGS) {
       this.state.browserPairings.sort((left, right) => left.requestedAt - right.requestedAt).shift();
     }
     const credential = createBrowserPairingCredential();
-    const expiresAt = now + BROWSER_PAIRING_TTL_MS;
+    const expiresAt = now + ttlMs;
     this.state.browserPairings.push({
       id: credential.id,
       verifier: browserPairingVerifier(credential.secret),

@@ -76,7 +76,8 @@ Usage: ./scripts/relay.sh <command>
   token              Print the connector token for local connector installation
   approve            Review and approve a pending connector
   pending            List pending devices
-  pair <public-url>  Create a ten-minute, single-use browser pairing link
+  pair <public-url> [minutes]
+                      Create a 1-60 minute, single-use browser pairing link (default: 10)
   devices [--json]   List approved devices with connection activity
   revoke             Select and revoke an approved device
   update             Pull main, rebuild, restart, and verify the relay
@@ -118,8 +119,9 @@ case "$command_name" in
     run_admin list
     ;;
   pair)
-    [ "$#" -eq 1 ] || die 'Usage: ./scripts/relay.sh pair https://codex.example.com'
-    run_admin pair "$1"
+    [ "$#" -ge 1 ] && [ "$#" -le 2 ] \
+      || die 'Usage: ./scripts/relay.sh pair https://codex.example.com [minutes]'
+    run_admin pair "$@"
     ;;
   devices)
     if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && [ "$1" != '--json' ]; }; then

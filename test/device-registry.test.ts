@@ -162,6 +162,12 @@ test('one-time browser pairing expires, cannot be reused, and stores no bearer s
 
   const expired = registry.createBrowserPairing(now);
   assert.equal(registry.getBrowserPairingVerifier(expired.credential.id, now + 10 * 60_000 + 1), null);
+
+  const custom = registry.createBrowserPairing(now, 30 * 60_000);
+  assert.notEqual(registry.getBrowserPairingVerifier(custom.credential.id, now + 20 * 60_000), null);
+  assert.equal(registry.getBrowserPairingVerifier(custom.credential.id, now + 30 * 60_000 + 1), null);
+  assert.throws(() => registry.createBrowserPairing(now, 0), /browser_pairing_ttl_invalid/);
+  assert.throws(() => registry.createBrowserPairing(now, 61 * 60_000), /browser_pairing_ttl_invalid/);
 });
 
 test('device admin creates a camera-optional one-time pairing link', async (t) => {
@@ -189,4 +195,24 @@ test('device admin creates a camera-optional one-time pairing link', async (t) =
   const stored = await readFile(filePath, 'utf8');
   const secret = renderedValue.split('.').at(-1)!;
   assert.doesNotMatch(stored, new RegExp(secret));
+});
+
+test('device admin accepts a bounded custom pairing expiry', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'codex-anywhere-device-pair-expiry-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const registry = new DeviceRegistry(join(directory, 'devices.json'));
+  let output = '';
+  await runDeviceAdmin({
+    registry,
+    args: ['pair', 'https://codex.example.com', '30'],
+    language: 'zh-CN',
+    renderQrCode: async () => '<qr>',
+    io: { question: async () => '', write: (text) => { output += text; } },
+  });
+  assert.match(output, /在 30 分钟内/);
+  await assert.rejects(runDeviceAdmin({
+    registry,
+    args: ['pair', 'https://codex.example.com', '61'],
+    io: { question: async () => '', write: () => {} },
+  }), /1 to 60 minutes/);
 });

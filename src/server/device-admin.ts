@@ -40,6 +40,14 @@ function selectDevice(devices: PendingDevice[], selector: string) {
   return devices.find((device) => device.requestId === selector);
 }
 
+function pairingMinutes(value?: string) {
+  if (value === undefined || value === '') return 10;
+  if (!/^\d+$/.test(value)) throw new Error('Pairing expiry must be a whole number of minutes from 1 to 60.');
+  const minutes = Number(value);
+  if (minutes < 1 || minutes > 60) throw new Error('Pairing expiry must be from 1 to 60 minutes.');
+  return minutes;
+}
+
 function describeApproved(device: ApprovedDevice, index: number, isChinese: boolean) {
   const approvedAt = new Date(device.approvedAt).toISOString();
   const role = isChinese
@@ -153,14 +161,15 @@ export async function runDeviceAdmin(options: DeviceAdminOptions = {}) {
   try {
     if (args[0] === 'pair') {
       const publicUrl = normalizePublicUrl(args[1] || process.env.BRIDGE_PUBLIC_URL);
-      const pairing = registry.createBrowserPairing();
+      const expiryMinutes = pairingMinutes(args[2]);
+      const pairing = registry.createBrowserPairing(Date.now(), expiryMinutes * 60_000);
       publicUrl.hash = browserPairingFragment(pairing.credential);
       const pairingUrl = publicUrl.toString();
       const renderQrCode = options.renderQrCode
         || ((value: string) => QRCode.toString(value, { type: 'terminal', small: true, errorCorrectionLevel: 'M' }));
       operator.write(isChinese
-        ? `在 10 分钟内打开下面的单次配对链接，或扫描二维码：\n${pairingUrl}\n\n`
-        : `Open this one-time pairing link within 10 minutes, or scan the QR code:\n${pairingUrl}\n\n`);
+        ? `在 ${expiryMinutes} 分钟内打开下面的单次配对链接，或扫描二维码：\n${pairingUrl}\n\n`
+        : `Open this one-time pairing link within ${expiryMinutes} minutes, or scan the QR code:\n${pairingUrl}\n\n`);
       operator.write(`${await renderQrCode(pairingUrl)}\n`);
       operator.write(isChinese
         ? '没有摄像头时可直接复制链接，或在 Web 页面上传二维码截图。\n'
