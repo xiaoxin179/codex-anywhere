@@ -99,6 +99,9 @@ $connectorToken = Read-Host 'Connector token' -AsSecureString
   -BridgeUrl 'wss://codex.example.com/ws'
 ```
 
+如果入口使用由 Windows 当前用户信任的私有 CA 签发的证书，请同时传入 `-UseSystemCa`，让 Node.js
+连接器读取 Windows 系统证书存储。公开 CA 证书不需要这个开关。
+
 请换成实际的 `ws://` 或 `wss://` 地址。Windows 使用当前用户 DPAPI 保护连接器密钥和设备私钥，
 把配置保存在 `%USERPROFILE%\.codex-anywhere`，并通过当前用户后台任务保持一个连接器运行；任务计划
 程序不可用时会回退到登录快捷方式。

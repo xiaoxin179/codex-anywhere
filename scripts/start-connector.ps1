@@ -132,6 +132,13 @@ if (-not [string]::IsNullOrWhiteSpace($allowAnyFileDownloadFromEnvironment)) {
 else {
     $allowAnyFileDownload = if ((Get-ConfigValue 'allowAnyFileDownload') -eq $true) { '1' } else { '0' }
 }
+$useSystemCaFromEnvironment = [Environment]::GetEnvironmentVariable('CODEX_CONNECTOR_USE_SYSTEM_CA', 'Process')
+if (-not [string]::IsNullOrWhiteSpace($useSystemCaFromEnvironment)) {
+    $useSystemCa = $useSystemCaFromEnvironment -eq '1'
+}
+else {
+    $useSystemCa = (Get-ConfigValue 'useSystemCa') -eq $true
+}
 
 $bridgeUri = $null
 $protectedToken = $null
@@ -251,7 +258,12 @@ if (-not $desktopCodex -and -not (Get-Command codex.exe -ErrorAction SilentlyCon
     $env:CODEX_ALLOW_FULL_ACCESS = $allowFullAccess
     $startInfo = [Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $nodePath
-    $startInfo.Arguments = "`"$compiledConnectorPath`""
+    $startInfo.Arguments = if ($useSystemCa) {
+        "--use-system-ca `"$compiledConnectorPath`""
+    }
+    else {
+        "`"$compiledConnectorPath`""
+    }
     $startInfo.WorkingDirectory = $projectRoot
     $startInfo.UseShellExecute = $false
     $startInfo.CreateNoWindow = $true

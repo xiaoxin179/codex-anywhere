@@ -7,6 +7,7 @@ param(
     [switch] $AllowAnyFileDownload,
     [switch] $EnableNetworkAccess,
     [switch] $AllowFullAccess,
+    [switch] $UseSystemCa,
     [switch] $NoStart
 )
 
@@ -149,6 +150,12 @@ $effectiveAllowFullAccess = if ($PSBoundParameters.ContainsKey('AllowFullAccess'
 else {
     [bool] (Get-ExistingSetting -Name 'allowFullAccess' -DefaultValue $false)
 }
+$effectiveUseSystemCa = if ($PSBoundParameters.ContainsKey('UseSystemCa')) {
+    [bool] $UseSystemCa
+}
+else {
+    [bool] (Get-ExistingSetting -Name 'useSystemCa' -DefaultValue $false)
+}
 $connectorConfig = [ordered]@{
     bridgeUrl = $bridgeUri.AbsoluteUri
     deviceId = $effectiveDeviceId
@@ -156,6 +163,7 @@ $connectorConfig = [ordered]@{
     allowAnyFileDownload = $effectiveAllowAnyFileDownload
     networkAccess = $effectiveNetworkAccess
     allowFullAccess = $effectiveAllowFullAccess
+    useSystemCa = $effectiveUseSystemCa
 }
 [IO.File]::WriteAllText(
     $configPath,

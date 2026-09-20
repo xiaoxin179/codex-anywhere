@@ -21,9 +21,17 @@ test('Windows login startup uses a GUI host without opening a console', async ()
   assert.match(installer, /Get-ExistingSetting -Name 'allowedRoots'/);
   assert.match(installer, /Get-ExistingSetting -Name 'allowAnyFileDownload'/);
   assert.match(installer, /Get-ExistingSetting -Name 'allowFullAccess'/);
+  assert.match(installer, /Get-ExistingSetting -Name 'useSystemCa'/);
 
   assert.match(launcher, /shell\.Run\(command,\s*0,\s*True\)/i);
   assert.match(launcher, /-WindowStyle Hidden/i);
+});
+
+test('Windows connector can opt into the operating system CA store', async () => {
+  const launcher = await readFile(resolve('scripts/start-connector.ps1'), 'utf8');
+  assert.match(launcher, /CODEX_CONNECTOR_USE_SYSTEM_CA/);
+  assert.match(launcher, /Get-ConfigValue 'useSystemCa'/);
+  assert.match(launcher, /--use-system-ca/);
 });
 
 test('Windows connector persists an opt-in private browser endpoint across restarts', async () => {
