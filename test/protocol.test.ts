@@ -322,6 +322,8 @@ test('session sidebar sorts recent sessions and renders current execution state 
   }));
   assert.ok(markup.indexOf('Current task') < markup.indexOf('Older task'));
   assert.match(markup, /session-card active running/);
+  assert.match(markup, /Current task[\s\S]*session-loading-spinner/);
+  assert.match(markup, /aria-label="正在生成回复"/);
   assert.match(markup, />beta</);
   assert.match(markup, /session-project-group expanded/);
   assert.match(markup, /在 beta 中新建会话/);

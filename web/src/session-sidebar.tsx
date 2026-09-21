@@ -256,9 +256,10 @@ export const SessionSidebar = memo(function SessionSidebar({
                       >
                         <span className="session-title" title={session.title || session.id}>{session.title || session.id}</span>
                         <span className="session-meta">
-                          {sessionRunning && <span className="session-running-dot" aria-label={t('运行中', 'Running')} title={t('运行中', 'Running')} />}
                           {completedUnread && <span className="session-unread-dot" aria-label={t('已完成，未读', 'Completed, unread')} title={t('已完成，未读', 'Completed, unread')} />}
-                          <time>{formatDate(session.updatedAt)}</time>
+                          {sessionRunning
+                            ? <span className="session-loading-spinner" role="status" aria-label={t('正在生成回复', 'Generating response')} title={t('正在生成回复', 'Generating response')} />
+                            : <time>{formatDate(session.updatedAt)}</time>}
                         </span>
                       </button>
                     );
