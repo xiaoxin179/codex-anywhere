@@ -137,6 +137,60 @@
     background: rgba(255, 255, 255, .96);
     backdrop-filter: blur(10px);
   }
+  .presence-cluster { flex: 0 0 auto; display: flex; align-items: center; gap: 9px; }
+  .account-usage { display: grid; gap: 4px; }
+  .account-limit {
+    --account-limit-remaining: 0%;
+    position: relative;
+    width: 62px;
+    height: 17px;
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    align-items: center;
+    padding: 0 4px 2px;
+    border-bottom: 1px solid #d4d4d8;
+    color: #71717a;
+    background: #fff;
+    cursor: help;
+    font-size: 8px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    outline: none;
+  }
+  .account-limit > span { font-weight: 600; }
+  .account-limit > strong { color: #18181b; font-size: 10px; font-weight: 600; text-align: right; }
+  .account-limit > i {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 1px;
+    background: linear-gradient(90deg, #002fa7 0 var(--account-limit-remaining), transparent var(--account-limit-remaining));
+  }
+  .account-limit > em {
+    position: absolute;
+    z-index: 7;
+    top: calc(100% + 8px);
+    right: 0;
+    width: max-content;
+    max-width: min(270px, calc(100vw - 24px));
+    padding: 7px 9px;
+    border: 1px solid #d4d4d8;
+    border-radius: 4px;
+    color: #27272a;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(24, 24, 27, .12);
+    font-size: 10px;
+    font-style: normal;
+    line-height: 1.35;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-3px);
+    transition: opacity .15s ease, transform .15s ease;
+  }
+  .account-limit { @include interaction.hover { > em { opacity: 1; transform: translateY(0); } } }
+  .account-limit:focus > em { opacity: 1; transform: translateY(0); }
   .conversation-title > strong { color: #18181b; font-weight: 600; }
   .conversation-title > span { border: 0; border-radius: 0; color: #71717a; background: transparent; }
   .session-rename-button { color: #71717a; }
@@ -270,6 +324,8 @@
     .app-shell { grid-template-columns: minmax(0, 1fr); }
     .sidebar { background: #f7f7f8; }
     .topbar { min-height: 64px; padding: 10px 14px; }
+    .presence-cluster { gap: 7px; }
+    .account-limit { width: 54px; grid-template-columns: 17px minmax(0, 1fr); padding-inline: 2px; }
     .message-content { padding-top: 24px; }
     .new-session-dialog { border-radius: 8px 8px 0 0; }
   }

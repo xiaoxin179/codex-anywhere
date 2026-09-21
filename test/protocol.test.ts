@@ -101,6 +101,7 @@ import {
 import { CodePreview, parseUnifiedDiffLines } from '../web/src/code-preview.js';
 import { ConversationTimeline } from '../web/src/conversation-timeline.js';
 import {
+  accountLimitPresentation,
   contextRingTone,
   contextUsagePresentation,
   PresenceIndicator,
@@ -146,7 +147,32 @@ test('presence indicator renders context usage as a compact outer ring', () => {
   assert.match(markup, /data-context-percent="82"/);
   assert.match(markup, /上下文 82%/);
   assert.match(markup, /presence-context-popover/);
-  assert.match(markup, /^<button type="button"/);
+  assert.match(markup, /^<div class="presence-cluster"/);
+});
+
+test('account limits show only available five-hour and weekly remaining quotas', () => {
+  const fiveHourReset = Date.parse('2026-09-21T15:21:30+08:00');
+  const limits = accountLimitPresentation({ limits: [
+    { usedPercent: 78, windowMinutes: 300, resetsAt: fiveHourReset },
+    { usedPercent: 61, windowMinutes: 10_080 },
+    { usedPercent: 10, windowMinutes: 60 },
+  ] });
+  assert.deepEqual(limits.map((limit) => [limit.key, limit.remainingPercent]), [
+    ['five-hour', 22],
+    ['weekly', 39],
+  ]);
+
+  const markup = renderToStaticMarkup(createElement(PresenceIndicator, {
+    online: true,
+    executionState: 'idle',
+    statusText: '',
+    contextUsage: null,
+    accountUsage: { limits: [{ usedPercent: 61, windowMinutes: 10_080 }] },
+  }));
+  assert.match(markup, /account-usage/);
+  assert.match(markup, /周/);
+  assert.match(markup, /39%/);
+  assert.doesNotMatch(markup, />5h</);
 });
 
 test('presence indicator blends context colors continuously and tolerates missing usage', () => {
@@ -962,6 +988,28 @@ test('latest token count exposes bounded current context usage', () => {
     contextWindow: 100_000,
     updatedAt: Date.parse('2026-09-03T04:02:00.000Z'),
   });
+  assert.equal(JSON.stringify(usage).includes('must-not-leak'), false);
+});
+
+test('rate limits expose only bounded account windows and omit unrelated account fields', () => {
+  const usage = rolloutInternals.accountUsageFromRow({
+    timestamp: '2026-09-21T03:21:00.000Z',
+    type: 'event_msg',
+    payload: { type: 'token_count', rate_limits: {
+      primary: { used_percent: 78, window_minutes: 300, resets_at: 1_789_975_290 },
+      secondary: { used_percent: 61, window_minutes: 10_080, resets_at: 1_789_970_213 },
+      plan_type: 'plus', credits: { balance: 'private' }, secret: 'must-not-leak',
+    } },
+  });
+  assert.deepEqual(usage, {
+    limits: [
+      { usedPercent: 78, windowMinutes: 300, resetsAt: 1_789_975_290_000 },
+      { usedPercent: 61, windowMinutes: 10_080, resetsAt: 1_789_970_213_000 },
+    ],
+    updatedAt: Date.parse('2026-09-21T03:21:00.000Z'),
+  });
+  assert.equal(JSON.stringify(usage).includes('plus'), false);
+  assert.equal(JSON.stringify(usage).includes('private'), false);
   assert.equal(JSON.stringify(usage).includes('must-not-leak'), false);
 });
 

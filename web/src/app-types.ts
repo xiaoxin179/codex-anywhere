@@ -2,6 +2,7 @@ import type { Turn } from './history-utils';
 import type { CurrentProtocol, ProtocolOffer } from '../../src/shared/protocol-contract';
 import type { TurnProgress } from '../../src/shared/turn-progress';
 import type { ContextUsage } from '../../src/shared/context-compaction';
+import type { AccountUsage } from '../../src/shared/account-usage';
 import type { PermissionMode } from '../../src/shared/permission-mode';
 
 export type Session = {
@@ -92,6 +93,7 @@ export type HistoryPage = {
   activityDetail?: string;
   turnProgress?: TurnProgress;
   contextUsage?: ContextUsage;
+  accountUsage?: AccountUsage;
 };
 export type TurnStartResult = { threadId: string; delivery?: 'desktop' | 'appServer' };
 export type PendingImage = { file: File; transferPreview?: File; previewUrl: string };

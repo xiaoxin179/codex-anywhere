@@ -116,6 +116,10 @@ import {
   normalizeContextUsage,
   type ContextUsage,
 } from '../../src/shared/context-compaction';
+import {
+  normalizeAccountUsage,
+  type AccountUsage,
+} from '../../src/shared/account-usage';
 import type { TimelineNotice } from '../../src/shared/timeline-notice';
 import { appendTimelineNotice } from './timeline-notice-events';
 import { clearPendingCompactions, finishTimelineCompaction, startTimelineCompaction } from './compaction-timeline';
@@ -223,6 +227,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
   const [searchOpen, setSearchOpen] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [contextUsage, setContextUsage] = useState<ContextUsage | null>(null);
+  const [accountUsage, setAccountUsage] = useState<AccountUsage | null>(null);
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -1263,6 +1268,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
       else {
         const state = snapshot || page;
         setContextUsage(normalizeContextUsage(state.contextUsage) || normalizeContextUsage(page.contextUsage) || null);
+        setAccountUsage(normalizeAccountUsage(state.accountUsage) || normalizeAccountUsage(page.accountUsage) || null);
         autoFollowLatestRef.current = true;
         shouldScrollBottomRef.current = true;
         for (const item of items) {
@@ -1331,6 +1337,8 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
         if (disposed || threadIdRef.current !== threadId) return;
         const nextContextUsage = normalizeContextUsage(page.contextUsage);
         if (nextContextUsage) setContextUsage(nextContextUsage);
+        const nextAccountUsage = normalizeAccountUsage(page.accountUsage);
+        if (nextAccountUsage) setAccountUsage(nextAccountUsage);
         const fingerprint = historyFingerprint(page.turns, page.turnProgress);
         const previousFingerprint = followFingerprintRef.current;
         const changed = Boolean(previousFingerprint && previousFingerprint !== fingerprint);
@@ -1436,6 +1444,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
     if (nextThreadId) storeEnvironmentValue(LAST_THREAD_KEY, environmentIdRef.current, nextThreadId);
     setTimeline([]);
     setContextUsage(null);
+    setAccountUsage(null);
     preserveScrollHeightRef.current = null;
     olderHistoryLoadingRef.current = false;
     setAttachmentUrls({});
@@ -2250,6 +2259,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
             executionState={executionState}
             statusText={statusText}
             contextUsage={contextUsage}
+            accountUsage={accountUsage}
           />
         </header>
 

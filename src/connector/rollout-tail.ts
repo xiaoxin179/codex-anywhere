@@ -6,6 +6,7 @@ import {
 import type { MessageContext } from '../shared/message-content.js';
 import { summarizeToolActivity } from '../shared/activity-detail.js';
 import type { ContextCompaction, ContextUsage } from '../shared/context-compaction.js';
+import type { AccountUsage } from '../shared/account-usage.js';
 import type { TimelineNotice, ToolSummaryNotice } from '../shared/timeline-notice.js';
 import type { PermissionMode } from '../shared/permission-mode.js';
 import { publicError } from '../shared/protocol.js';
@@ -114,6 +115,7 @@ type RolloutSnapshot = SnapshotOptions & {
   progress: RolloutProgress;
   mapping: RolloutMappingState;
   contextUsage?: ContextUsage;
+  accountUsage?: AccountUsage;
 };
 type CompleteRows = {
   rows: RolloutRow[]; parsedOffset: number; firstCompleteOffset: number; recoveredLeadingRow?: boolean;
@@ -224,6 +226,15 @@ export async function readRolloutContextUsage(filePath: string): Promise<Context
   }
 }
 
+export async function readRolloutAccountUsage(filePath: string): Promise<AccountUsage | undefined> {
+  const handle = await open(filePath, 'r');
+  try {
+    return await findLatestAccountUsageBefore(handle, (await handle.stat()).size);
+  } finally {
+    await handle.close();
+  }
+}
+
 export async function readRolloutTail(options: RolloutOptions) {
   const filePath = String(options?.filePath || '');
   const threadId = String(options?.threadId || '');
@@ -276,6 +287,7 @@ export async function readRolloutTail(options: RolloutOptions) {
       activityDetail: snapshot.activity.status === 'inProgress' ? snapshot.activityDetail : '',
       turnProgress: { plan: snapshot.progress.plan, files: snapshot.progress.files },
       contextUsage: snapshot.contextUsage,
+      accountUsage: snapshot.accountUsage,
       lastCompactionAt: snapshot.lastCompactionAt,
     };
   } finally {
@@ -337,6 +349,9 @@ async function readHistoryPage(
     contextUsage: encodedCursor
       ? undefined
       : latestContextUsage(window.rows) || await findLatestContextUsageBefore(handle, window.firstCompleteOffset),
+    accountUsage: encodedCursor
+      ? undefined
+      : latestAccountUsage(window.rows) || await findLatestAccountUsageBefore(handle, window.firstCompleteOffset),
     lastCompactionAt: latestCompactionTime(window.rows),
   };
 }
@@ -419,6 +434,8 @@ async function initializeSnapshot(handle: FileHandle, fileSize: number, options:
     lastCompactionAt: latestCompactionTime(window.rows),
     contextUsage: latestContextUsage(window.rows)
       || await findLatestContextUsageBefore(handle, window.firstCompleteOffset),
+    accountUsage: latestAccountUsage(window.rows)
+      || await findLatestAccountUsageBefore(handle, window.firstCompleteOffset),
   };
 }
 
@@ -451,6 +468,7 @@ async function updateSnapshot(handle: FileHandle, fileSize: number, cached: Roll
     mapping: mapped.state,
     lastCompactionAt: latestCompactionTime(appended.rows) || cached.lastCompactionAt,
     contextUsage: latestContextUsage(appended.rows) || cached.contextUsage,
+    accountUsage: latestAccountUsage(appended.rows) || cached.accountUsage,
   };
 }
 
@@ -1311,6 +1329,14 @@ function latestContextUsage(rows: RolloutRow[]): ContextUsage | undefined {
   return undefined;
 }
 
+function latestAccountUsage(rows: RolloutRow[]): AccountUsage | undefined {
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const usage = accountUsageFromRow(rows[index]);
+    if (usage) return usage;
+  }
+  return undefined;
+}
+
 function latestCompactionTime(rows: RolloutRow[]) {
   for (let index = rows.length - 1; index >= 0; index--) {
     if (rows[index].type === 'compacted') return epochMillis(rows[index].timestamp) || 0;
@@ -1324,6 +1350,19 @@ async function findLatestContextUsageBefore(handle: FileHandle, endOffset: numbe
     const start = Math.max(0, cursor - CONTEXT_USAGE_SCAN_CHUNK_BYTES);
     const window = await readCompleteRows(handle, start, cursor, start > 0);
     const usage = latestContextUsage(window.rows);
+    if (usage) return usage;
+    if (start === 0) break;
+    cursor = window.firstCompleteOffset < cursor ? window.firstCompleteOffset : start;
+  }
+  return undefined;
+}
+
+async function findLatestAccountUsageBefore(handle: FileHandle, endOffset: number) {
+  let cursor = endOffset;
+  while (cursor > 0) {
+    const start = Math.max(0, cursor - CONTEXT_USAGE_SCAN_CHUNK_BYTES);
+    const window = await readCompleteRows(handle, start, cursor, start > 0);
+    const usage = latestAccountUsage(window.rows);
     if (usage) return usage;
     if (start === 0) break;
     cursor = window.firstCompleteOffset < cursor ? window.firstCompleteOffset : start;
@@ -1345,6 +1384,27 @@ function contextUsageFromRow(row: RolloutRow): ContextUsage | undefined {
   };
 }
 
+function accountUsageFromRow(row: RolloutRow): AccountUsage | undefined {
+  const payload = row?.payload || {};
+  if (row?.type !== 'event_msg' || payload.type !== 'token_count') return undefined;
+  const rateLimits = payload.rate_limits || payload.info?.rate_limits;
+  if (!rateLimits || typeof rateLimits !== 'object') return undefined;
+  const limits = [rateLimits.primary, rateLimits.secondary].flatMap((value) => {
+    if (!value || typeof value !== 'object') return [];
+    const usedPercent = boundedPercent(value.used_percent);
+    const windowMinutes = positiveInteger(value.window_minutes);
+    if (usedPercent === undefined || !windowMinutes) return [];
+    const resetSeconds = nonNegativeNumber(value.resets_at);
+    return [{
+      usedPercent,
+      windowMinutes,
+      ...(resetSeconds !== undefined ? { resetsAt: resetSeconds * 1_000 } : {}),
+    }];
+  });
+  if (!limits.length) return undefined;
+  return { limits, updatedAt: epochMillis(row.timestamp) };
+}
+
 function positiveInteger(value: unknown) {
   const number = Number(value);
   return Number.isSafeInteger(number) && number > 0 ? number : 0;
@@ -1353,6 +1413,16 @@ function positiveInteger(value: unknown) {
 function nonNegativeInteger(value: unknown) {
   const number = Number(value);
   return Number.isSafeInteger(number) && number >= 0 ? number : undefined;
+}
+
+function nonNegativeNumber(value: unknown) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : undefined;
+}
+
+function boundedPercent(value: unknown) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 && number <= 100 ? number : undefined;
 }
 
 function fullText(value: unknown) {
@@ -1384,7 +1454,7 @@ export const internals = {
   inferRolloutStatus, mapRolloutRows, mapRolloutRowsWithState, recoverGeneratedImageRows,
   rolloutCache, rolloutRowTurnId,
   contextCompactionFromRows,
-  contextUsageFromRow, latestContextUsage,
+  accountUsageFromRow, contextUsageFromRow, latestAccountUsage, latestContextUsage,
   updateLiveActivity,
   reasoningSummary, updateActivityDetail, updateToolPurpose,
   updateTurnProgress,

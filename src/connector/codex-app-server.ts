@@ -7,6 +7,7 @@ import { resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { CompactionProgressReader } from './compaction-progress.js';
 import {
+  readRolloutAccountUsage,
   readRolloutContextUsage,
   readRolloutGeneratedImages,
   readRolloutModelSettings,
@@ -320,9 +321,12 @@ export class CodexAppServer extends EventEmitter {
         itemsView: mode === 'live' ? 'full' : 'summary',
         ...(cursor ? { cursor } : {}),
       });
-      const contextUsage = !cursor && metadata?.path
-        ? await readRolloutContextUsage(metadata.path).catch(() => undefined)
-        : undefined;
+      const [contextUsage, accountUsage] = !cursor && metadata?.path
+        ? await Promise.all([
+          readRolloutContextUsage(metadata.path).catch(() => undefined),
+          readRolloutAccountUsage(metadata.path).catch(() => undefined),
+        ])
+        : [undefined, undefined];
       const rawTurns = Array.isArray(result?.data) ? result.data : [];
       const hydratedTurns = mode === 'conversation'
         ? await this.hydrateInjectedTurnInputs(resolvedThreadId, rawTurns)
@@ -344,6 +348,7 @@ export class CodexAppServer extends EventEmitter {
         truncated: false,
         source: 'appServer',
         contextUsage,
+        accountUsage,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
