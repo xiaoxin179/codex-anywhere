@@ -166,7 +166,13 @@
     background: #f7f7f8;
     box-shadow: none;
   }
-  .message.assistant { color: #27272a; }
+  .message.assistant {
+    --bubble-tail-color: transparent;
+    color: #27272a;
+    background: transparent;
+    box-shadow: none;
+  }
+  .message.assistant::before { display: none; }
   .message.assistant.live::after { background: #002fa7; box-shadow: none; }
   .message-time, .message-role, .message-origin, .message-meta { color: #a1a1aa; }
   .markdown-body, .markdown-body p { color: #27272a; }
