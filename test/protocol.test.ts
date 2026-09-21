@@ -1578,6 +1578,12 @@ test('message metadata stays in a fixed sibling row outside the bubble', async (
   assert.match(responsiveSource, /\.message-block\s*\{\s*width:\s*96%;\s*max-width:\s*96%;\s*\}/);
 });
 
+test('assistant code blocks keep high-contrast text on their dark surface', async () => {
+  const themeSource = await readFile(resolve('web/src/styles/_codex-theme.scss'), 'utf8');
+  assert.match(themeSource, /\.message\.assistant pre\s*\{[\s\S]*?color:\s*#f4f4f5;[\s\S]*?background:\s*#09090b;/);
+  assert.match(themeSource, /\.message\.assistant pre code\s*\{[\s\S]*?color:\s*inherit;[\s\S]*?background:\s*transparent;/);
+});
+
 test('mobile controls suppress transient tap rectangles without hiding keyboard focus', async () => {
   const stylesSource = await readFile(resolve('web/src/styles.scss'), 'utf8');
   const interactionSource = await readFile(resolve('web/src/styles/_interaction.scss'), 'utf8');
