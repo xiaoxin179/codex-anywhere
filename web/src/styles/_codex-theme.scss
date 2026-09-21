@@ -264,7 +264,7 @@
     background: transparent;
     box-shadow: none;
   }
-  .message.assistant::before { display: none; }
+  .message.user::before, .message.assistant::before { display: none; }
   .message.assistant.live::after { background: #002fa7; box-shadow: none; }
   .message-time, .message-role, .message-origin, .message-meta { color: #a1a1aa; }
   .markdown-body, .markdown-body p { color: #27272a; }
