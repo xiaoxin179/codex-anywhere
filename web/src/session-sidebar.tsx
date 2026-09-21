@@ -154,7 +154,7 @@ export const SessionSidebar = memo(function SessionSidebar({
   return (
     <aside className={`sidebar ${open ? 'open' : ''}`} aria-label={t('会话列表', 'Session list')}>
       <div className="sidebar-head">
-        <div><p className="eyebrow">CODEX ANYWHERE</p></div>
+        <div><p className="sidebar-brand">Codex Anywhere</p></div>
         <div className="sidebar-actions">
           <button className="sidebar-tool" onClick={() => onNewSession()} aria-label={t('新会话', 'New session')} title={t('新会话', 'New session')}>
             <SidebarIcon name="plus" />

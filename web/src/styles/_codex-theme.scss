@@ -87,12 +87,12 @@
   /* Shell and navigation */
   .app-shell { grid-template-columns: 288px minmax(0, 1fr); background: #f7f7f8; }
   .sidebar {
-    padding: 24px 16px 14px;
+    padding: 18px 12px 12px;
     border-right: 1px solid #dedee1;
     background: #f7f7f8;
   }
-  .sidebar-head { margin-bottom: 8px; padding: 0 4px 17px; border-bottom: 1px solid #d4d4d8; }
-  .sidebar-head .eyebrow { margin: 0; color: #18181b; letter-spacing: .08em; }
+  .sidebar-head { margin-bottom: 6px; padding: 0 2px 8px; border-bottom: 0; }
+  .sidebar-brand { margin: 0; color: #27272a; font-size: 14px; font-weight: 600; letter-spacing: -.02em; }
   .sidebar-tool, .icon-button {
     border: 1px solid transparent;
     border-radius: 6px;
@@ -102,8 +102,10 @@
   }
   .sidebar-tool, .icon-button { @include interaction.hover { border-color: #d4d4d8; color: #18181b; background: #fff; } }
   .sidebar-tool.active { border-color: #002fa7; color: #002fa7; background: #fff; box-shadow: none; }
-  .environment-picker { margin: 4px 0 12px; padding: 8px; border: 1px solid #e4e4e7; border-radius: 0; background: #fff; }
-  .environment-picker-label { color: #71717a; }
+  .environment-picker { margin: 0 0 10px; padding: 0; border: 0; border-radius: 0; background: transparent; }
+  .environment-picker-label { display: none; }
+  .environment-picker-select .custom-select-trigger { min-height: 34px; padding-inline: 9px; border-color: transparent; background: transparent; }
+  .environment-picker-select .custom-select-trigger { @include interaction.hover { border-color: #e4e4e7; background: #fff; } }
   .environment-picker-select .custom-select-trigger strong { color: #18181b; }
   .environment-picker-select .custom-select-trigger small { color: #71717a; }
   .environment-picker-select .custom-select-menu { border-color: #d4d4d8; background: #fff; }
@@ -111,32 +113,44 @@
   .environment-status-dot { background: #a1a1aa; box-shadow: none; }
   .environment-status-dot.online { background: #002fa7; box-shadow: none; }
   .compact-search { border: 1px solid #d4d4d8; border-radius: 0; color: #71717a; background: #fff; }
-  .session-list { gap: 0; }
-  .session-project-group { border-bottom: 1px solid #d4d4d8; }
-  .session-project-head { grid-template-columns: minmax(0, 1fr) 32px; }
-  .session-project-toggle, .session-project-new { height: 38px; color: #71717a; }
-  .session-project-toggle { padding: 0 6px 0 4px; }
-  .session-project-toggle, .session-project-new { @include interaction.hover { color: #18181b; background: #fff; } }
-  .session-project-name { color: #18181b; font-size: 11px; font-weight: 700; letter-spacing: .01em; }
-  .session-project-count { min-width: 24px; color: #002fa7; font-size: 14px; font-weight: 700; }
-  .session-project-new { width: 32px; border-left: 1px solid #e4e4e7; }
-  .session-project-new:focus-visible, .session-project-toggle:focus-visible { outline: 2px solid #002fa7; outline-offset: -2px; }
-  .session-project-sessions { margin: 0 0 4px 12px; border-left-color: #d4d4d8; }
+  .session-list { gap: 8px; padding-bottom: 10px; }
+  .session-project-group { border: 0; }
+  .session-project-head { grid-template-columns: minmax(0, 1fr) 28px; padding-inline: 2px; }
+  .session-project-toggle, .session-project-new { height: 28px; color: #a1a1aa; }
+  .session-project-toggle { grid-template-columns: 14px minmax(0, 1fr) auto; gap: 4px; padding: 0 4px; }
+  .session-project-chevron .sidebar-tool-icon { width: 11px; height: 11px; }
+  .session-project-toggle, .session-project-new { @include interaction.hover { color: #52525b; background: transparent; } }
+  .session-project-name { color: #71717a; font-size: 10px; font-weight: 600; letter-spacing: .015em; }
+  .session-project-count { min-width: 12px; color: #a1a1aa; font-size: 9px; font-weight: 500; }
+  .session-project-new { width: 28px; border: 0; border-radius: 5px; opacity: 0; transition: opacity .14s ease, color .14s ease, background .14s ease; }
+  .session-project-head { @include interaction.hover { .session-project-new { opacity: 1; } } }
+  .session-project-head:focus-within .session-project-new { opacity: 1; }
+  .session-project-new { @include interaction.hover { color: #18181b; background: #e4e4e7; } }
+  .session-project-new:focus-visible, .session-project-toggle:focus-visible { outline: 2px solid rgba(0, 47, 167, .35); outline-offset: -2px; }
+  .session-project-sessions { margin: 0; border-left: 0; }
   .session-card {
-    gap: 5px;
-    padding: 11px 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 7px 9px 7px 22px;
     border: 0;
-    border-left: 2px solid transparent;
-    border-radius: 0;
+    border-radius: 7px;
     color: #52525b;
   }
-  .session-card { @include interaction.hover { background: #fff; } }
-  .session-card.active { border-color: #002fa7; background: #fff; }
-  .session-card.running:not(.active), .session-card.completed-unread:not(.active) { border-color: #002fa7; background: transparent; }
-  .session-card + .session-card::before { right: 0; left: 10px; background: #e4e4e7; }
-  .session-title { color: #27272a; font-size: 13px; font-weight: 600; }
-  .session-meta, .session-project, .session-project.placeholder, .empty-list { color: #71717a; }
-  .session-running-dot, .session-unread-dot { width: 6px; height: 6px; background: #002fa7; box-shadow: none; }
+  .session-card { @include interaction.hover { background: #ededee; } }
+  .session-card.active { border: 0; background: #e4e4e7; box-shadow: inset 2px 0 #002fa7; }
+  .session-card.running:not(.active), .session-card.completed-unread:not(.active) { border: 0; background: transparent; }
+  .session-card + .session-card::before { display: none; }
+  .session-title { color: #3f3f46; font-size: 12px; font-weight: 500; }
+  .session-card.active .session-title { color: #18181b; font-weight: 600; }
+  .session-meta { min-width: auto; gap: 5px; color: #a1a1aa; font-size: 9px; }
+  .session-project, .session-project.placeholder, .empty-list { color: #71717a; }
+  .session-running-dot, .session-unread-dot { width: 5px; height: 5px; background: #002fa7; box-shadow: none; }
+
+  @media (hover: none) {
+    .session-project-new { opacity: .58; }
+  }
 
   /* Conversation */
   .conversation { background: #fff; }
