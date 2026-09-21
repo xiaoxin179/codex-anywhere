@@ -1311,6 +1311,9 @@ input:not([type='range']):focus, textarea:focus { border-color: $focus !importan
 .quote-preview span { color: #8c9bb0; font-size: 11px; }
 .quote-preview button { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 7px; color: #91a0b6; background: transparent; font-size: 18px; }
 .quote-preview button { @include interaction.hover { color: #fff; background: #1c2534; } }
+.quote-preview textarea { grid-column: 2 / -1; width: 100%; min-height: 31px; resize: none; border: 0; border-top: 1px solid #303a4d; padding: 7px 0 0; outline: 0; color: #dbe4f3; background: transparent; font: inherit; font-size: 12px; line-height: 1.35; }
+.quote-preview textarea::placeholder { color: #718198; }
+.quote-preview textarea:focus { border-top-color: #5687ec; }
 .image-preview img { width: 48px; height: 48px; flex: 0 0 auto; border-radius: 9px; object-fit: cover; background: #090d14; }
 .image-preview-details { width: 0; min-width: 0; flex: 1 1 0; }
 .image-preview strong, .image-preview small { display: block; @include truncate; }

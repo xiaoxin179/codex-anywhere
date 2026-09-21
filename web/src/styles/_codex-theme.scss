@@ -342,6 +342,9 @@
   .quote-preview span { color: #71717a; }
   .quote-preview button { color: #71717a; }
   .quote-preview button { @include interaction.hover { color: #18181b; background: #e4e4e7; } }
+  .quote-preview textarea { border-top-color: #e4e4e7; color: #27272a; }
+  .quote-preview textarea::placeholder { color: #a1a1aa; }
+  .quote-preview textarea:focus { border-top-color: #002fa7; }
 
   /* Dialogs */
   .pairing-dialog-backdrop, .new-session-overlay, .run-details-backdrop { background: rgba(24,24,27,.28); backdrop-filter: blur(4px); }

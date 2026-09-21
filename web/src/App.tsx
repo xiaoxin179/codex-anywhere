@@ -95,7 +95,12 @@ import {
 import { BrowserSecureChannel } from './secure-channel-client';
 import { sendWebSocketFrame } from './websocket-send';
 import { ImageUploadProgress, type ImageUploadState } from './image-upload-progress';
-import { appendMessageQuote, buildQuotedPrompt, type MessageQuote } from './message-quotes';
+import {
+  appendMessageQuote,
+  buildQuotedPrompt,
+  MAX_QUOTE_COMMENT_LENGTH,
+  type MessageQuote,
+} from './message-quotes';
 import {
   DEFAULT_ENVIRONMENT_ID,
   environmentDisplayName,
@@ -238,6 +243,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [pendingQuotes, setPendingQuotes] = useState<MessageQuote[]>([]);
+  const quoteCommentRefs = useRef(new Map<string, HTMLTextAreaElement>());
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
   const [knownAttachments, setKnownAttachments] = useState<Record<string, KnownAttachment>>(loadKnownAttachments);
@@ -1680,7 +1686,8 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
 
   const quoteAssistantText = useCallback((quote: MessageQuote) => {
     setPendingQuotes((current) => appendMessageQuote(current, quote));
-    requestAnimationFrame(() => composerTextareaRef.current?.focus());
+    const quoteKey = `${quote.sourceMessageId}\u0000${quote.text}`;
+    requestAnimationFrame(() => quoteCommentRefs.current.get(quoteKey)?.focus());
   }, []);
 
   const sendTurn = useCallback(async (questionReplies?: QuestionReply[]) => {
@@ -1688,6 +1695,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
     if (questionReplies && (!threadId || threadId !== threadIdRef.current)) return;
     const promptText = questionReplies ? '' : prompt.trim();
     const quotes = questionReplies ? [] : pendingQuotes;
+    if (!questionReplies && quotes.some((quote) => !(quote.comment || '').trim())) return;
     const text = questionReplies ? buildQuestionReply(questionReplies) : buildQuotedPrompt(promptText, quotes);
     const image = questionReplies ? null : pendingImage;
     const targetThreadId = threadIdRef.current;
@@ -2379,13 +2387,30 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
               {pendingQuotes.map((quote, index) => (
                 <div className="quote-preview" key={`${quote.sourceMessageId}:${quote.text}`}>
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h4v4H7v5H5v-7a4 4 0 0 1 4-4h2M15 8h4v4h-4v5h-2v-7a4 4 0 0 1 4-4h2" /></svg>
-                  <div><strong>{t(`引用 AI 回复${pendingQuotes.length > 1 ? ` ${index + 1}` : ''}`, `Quoted reply${pendingQuotes.length > 1 ? ` ${index + 1}` : ''}`)}</strong><span>{quote.text}</span></div>
+                  <div><strong>{t(`引用 ${index + 1}`, `Quote ${index + 1}`)}</strong><span>{quote.text}</span></div>
                   <button
                     type="button"
                     onClick={() => setPendingQuotes((current) => current.filter((item) => item !== quote))}
                     aria-label={t('移除引用', 'Remove quote')}
                     title={t('移除引用', 'Remove quote')}
                   >×</button>
+                  <textarea
+                    ref={(element) => {
+                      const key = `${quote.sourceMessageId}\u0000${quote.text}`;
+                      if (element) quoteCommentRefs.current.set(key, element);
+                      else quoteCommentRefs.current.delete(key);
+                    }}
+                    rows={1}
+                    maxLength={MAX_QUOTE_COMMENT_LENGTH}
+                    value={quote.comment || ''}
+                    onChange={(event) => {
+                      const comment = event.target.value;
+                      setPendingQuotes((current) => current.map((item) => item === quote ? { ...item, comment } : item));
+                    }}
+                    placeholder={t('写下对这段引用的评论…', 'Comment on this quote…')}
+                    aria-label={t(`引用 ${index + 1} 的评论`, `Comment for quote ${index + 1}`)}
+                    disabled={!online || uploading || running}
+                  />
                 </div>
               ))}
             </div>
@@ -2447,7 +2472,8 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
                   ? t('向当前任务追加指令…', 'Steer the current run…')
                   : directDesktopDeliveryAvailable
                     ? t('直接发送到当前任务…', 'Send to the current run…')
-                  : online ? t('发送给当前 Codex…', 'Send to the current Codex…') : t('当前执行环境离线', 'Current environment is offline')}
+                  : pendingQuotes.length ? t('补充整体说明（可选）…', 'Add an overall note (optional)…')
+                    : online ? t('发送给当前 Codex…', 'Send to the current Codex…') : t('当前执行环境离线', 'Current environment is offline')}
               disabled={!online || uploading}
             />
             <div className="composer-actions">
@@ -2458,6 +2484,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
                     || uploading
                     || (running && !steeringAvailable)
                     || (!prompt.trim() && !pendingImage && pendingQuotes.length === 0)
+                    || pendingQuotes.some((quote) => !(quote.comment || '').trim())
                     || (!threadId && !newSessionCwd.trim())
                   }
                   onClick={() => void sendTurn()}

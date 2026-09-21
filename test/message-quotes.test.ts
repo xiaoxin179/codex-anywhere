@@ -11,10 +11,11 @@ import {
 import { MessageBubble } from '../web/src/message-bubble.js';
 import { buildSelectionSearchUrl, buildSelectionTranslateUrl } from '../web/src/selection-actions.js';
 
-test('selected assistant text becomes a bounded Markdown quote followed by the question', () => {
+test('each selected assistant text carries its own comment before the optional overall question', () => {
   assert.equal(buildQuotedPrompt('为什么这样设计？', [
-    { sourceMessageId: 'assistant-1', text: '第一行\r\n第二行' },
-  ]), '> 第一行\n> 第二行\n\n为什么这样设计？');
+    { sourceMessageId: 'assistant-1', text: '第一行\r\n第二行', comment: '请解释这里。' },
+    { sourceMessageId: 'assistant-2', text: '第三行', comment: '这一点是否仍然成立？' },
+  ]), '> 第一行\n> 第二行\n\n评论：请解释这里。\n\n> 第三行\n\n评论：这一点是否仍然成立？\n\n为什么这样设计？');
   assert.equal(normalizeMessageQuote({ sourceMessageId: '', text: '内容' }), null);
 });
 
