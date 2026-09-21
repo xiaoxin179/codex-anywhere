@@ -507,7 +507,10 @@ function MessageBubbleComponent({
   }
   return (
     <div className={`message-block ${item.kind}${copyable ? ' copyable' : ''}`}>
-      <div className={`message ${item.kind}${copyable ? ' copyable' : ''}${active ? ' live' : ''}${finalReplyArriving ? ' final-arriving' : ''}`}>
+      <div
+        className={`message ${item.kind}${copyable ? ' copyable' : ''}${active ? ' live' : ''}${finalReplyArriving ? ' final-arriving' : ''}`}
+        data-quote-message-id={item.kind === 'assistant' ? item.id : undefined}
+      >
         <MessageContexts item={item} />
         {item.kind === 'user' && item.questionReplies?.length ? <QuestionReplyContent
           replies={item.questionReplies}

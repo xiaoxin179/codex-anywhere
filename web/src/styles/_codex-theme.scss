@@ -275,6 +275,8 @@
     color: #f4f4f5;
     background: #09090b;
   }
+  .selection-quote-action { border-color: #002fa7; border-radius: 6px; color: #fff; background: #002fa7; box-shadow: 0 8px 22px rgba(24,24,27,.16); }
+  .selection-quote-action { @include interaction.hover { border-color: #18181b; background: #18181b; } }
   .message.assistant pre code {
     border: 0;
     color: inherit;
@@ -332,6 +334,11 @@
   .image-preview { border-color: #d4d4d8; border-radius: 8px; background: #fafafa; }
   .image-preview strong { color: #27272a; }
   .image-preview small { color: #71717a; }
+  .quote-preview { border-color: #d4d4d8; border-left-color: #002fa7; border-radius: 7px; color: #002fa7; background: #fafafa; }
+  .quote-preview strong { color: #52525b; }
+  .quote-preview span { color: #71717a; }
+  .quote-preview button { color: #71717a; }
+  .quote-preview button { @include interaction.hover { color: #18181b; background: #e4e4e7; } }
 
   /* Dialogs */
   .pairing-dialog-backdrop, .new-session-overlay, .run-details-backdrop { background: rgba(24,24,27,.28); backdrop-filter: blur(4px); }

@@ -95,6 +95,7 @@ import {
 import { BrowserSecureChannel } from './secure-channel-client';
 import { sendWebSocketFrame } from './websocket-send';
 import { ImageUploadProgress, type ImageUploadState } from './image-upload-progress';
+import { appendMessageQuote, buildQuotedPrompt, type MessageQuote } from './message-quotes';
 import {
   DEFAULT_ENVIRONMENT_ID,
   environmentDisplayName,
@@ -236,6 +237,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
   const [initialHistoryLoaded, setInitialHistoryLoaded] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
+  const [pendingQuotes, setPendingQuotes] = useState<MessageQuote[]>([]);
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
   const [knownAttachments, setKnownAttachments] = useState<Record<string, KnownAttachment>>(loadKnownAttachments);
@@ -304,6 +306,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
   const latestActivityIdRef = useRef('');
   const awaitingDesktopTurnRef = useRef<AwaitingDesktopTurn | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const newSessionImageInputRef = useRef<HTMLInputElement | null>(null);
   const newSessionAutoSendRef = useRef(false);
   const sendingRef = useRef(false);
@@ -1441,6 +1444,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
     setThreadId(nextThreadId);
     threadIdRef.current = nextThreadId;
     setCreatingNewSession(false);
+    setPendingQuotes([]);
     if (nextThreadId) storeEnvironmentValue(LAST_THREAD_KEY, environmentIdRef.current, nextThreadId);
     setTimeline([]);
     setContextUsage(null);
@@ -1665,6 +1669,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
     selectSession(null);
     setCreatingNewSession(true);
     setPrompt(text);
+    setPendingQuotes([]);
     setPendingImage(transferredImage);
     setNewSessionPrompt('');
     setNewSessionImage(null);
@@ -1673,10 +1678,17 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
     newSessionAutoSendRef.current = true;
   }, [newSessionCwd, newSessionImage, newSessionPrompt, selectSession]);
 
+  const quoteAssistantText = useCallback((quote: MessageQuote) => {
+    setPendingQuotes((current) => appendMessageQuote(current, quote));
+    requestAnimationFrame(() => composerTextareaRef.current?.focus());
+  }, []);
+
   const sendTurn = useCallback(async (questionReplies?: QuestionReply[]) => {
     // A question response is independent of the message/image draft.
     if (questionReplies && (!threadId || threadId !== threadIdRef.current)) return;
-    const text = questionReplies ? buildQuestionReply(questionReplies) : prompt.trim();
+    const promptText = questionReplies ? '' : prompt.trim();
+    const quotes = questionReplies ? [] : pendingQuotes;
+    const text = questionReplies ? buildQuestionReply(questionReplies) : buildQuotedPrompt(promptText, quotes);
     const image = questionReplies ? null : pendingImage;
     const targetThreadId = threadIdRef.current;
     const steering = canSteerOwnedTurn(
@@ -1763,6 +1775,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
       setUploading(false);
       if (!questionReplies) {
         setPrompt('');
+        setPendingQuotes([]);
         setPendingImage(null);
         composerCleared = true;
       }
@@ -1881,7 +1894,8 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
         setTimeline((current) => current.filter((item) => item.id !== optimisticItemId));
       }
       if (composerCleared) {
-        setPrompt((current) => current.trim() ? current : text);
+        setPrompt((current) => current.trim() ? current : promptText);
+        setPendingQuotes((current) => current.length ? current : quotes);
         if (image) setPendingImage((current) => current || {
           file: image.file,
           transferPreview: image.transferPreview,
@@ -1898,7 +1912,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
     }
   }, [
     addTimeline, executionState, modelConfig, newSessionCwd, ownedTurnThreadId, pendingImage,
-    permissionConfig, prompt, threadId,
+    pendingQuotes, permissionConfig, prompt, threadId,
     refreshSessions, rememberAttachment, reportTimelineError, request, resetExecution, running,
     updateExecution, updateSessionAttention, uploading,
   ]);
@@ -2320,6 +2334,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
           onReadTurnDiff={readTurnDiff}
           onReadVisualization={readVisualization}
           onReadPreviewImage={readPreviewImage}
+          onQuoteAssistantText={quoteAssistantText}
         />
         <div className="execution-strip">
           {!compactionStartedAt && (executionState === 'running' || executionState === 'waiting') && (
@@ -2359,6 +2374,22 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
         )}
 
         {(threadId || creatingNewSession) && <footer className="composer-wrap">
+          {pendingQuotes.length > 0 && (
+            <div className="quote-preview-list" aria-label={t('待发送引用', 'Quotes ready to send')}>
+              {pendingQuotes.map((quote, index) => (
+                <div className="quote-preview" key={`${quote.sourceMessageId}:${quote.text}`}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h4v4H7v5H5v-7a4 4 0 0 1 4-4h2M15 8h4v4h-4v5h-2v-7a4 4 0 0 1 4-4h2" /></svg>
+                  <div><strong>{t(`引用 AI 回复${pendingQuotes.length > 1 ? ` ${index + 1}` : ''}`, `Quoted reply${pendingQuotes.length > 1 ? ` ${index + 1}` : ''}`)}</strong><span>{quote.text}</span></div>
+                  <button
+                    type="button"
+                    onClick={() => setPendingQuotes((current) => current.filter((item) => item !== quote))}
+                    aria-label={t('移除引用', 'Remove quote')}
+                    title={t('移除引用', 'Remove quote')}
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          )}
           {pendingImage && (
             <div className="image-preview">
               <img src={pendingImage.previewUrl} alt={t('待发送图片预览', 'Image ready to send')} />
@@ -2396,6 +2427,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
               title={t('添加图片', 'Add image')}
             >＋</button>
             <textarea
+              ref={composerTextareaRef}
               rows={1}
               value={prompt}
               onPaste={(event) => {
@@ -2425,7 +2457,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
                     !online
                     || uploading
                     || (running && !steeringAvailable)
-                    || (!prompt.trim() && !pendingImage)
+                    || (!prompt.trim() && !pendingImage && pendingQuotes.length === 0)
                     || (!threadId && !newSessionCwd.trim())
                   }
                   onClick={() => void sendTurn()}

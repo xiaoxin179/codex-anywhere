@@ -1,5 +1,5 @@
 import {
-  lazy, memo, Suspense, useEffect, useMemo, useRef, type RefObject, type UIEventHandler,
+  lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type RefObject, type UIEventHandler,
 } from 'react';
 import {
   resolveTimelineAttachment,
@@ -10,6 +10,7 @@ import { t } from './i18n';
 import type { TextPreviewDocument, TurnDiffDocument } from './app-types';
 import type { QuestionReply } from '../../src/shared/async-questions';
 import { AsyncQuestionCard } from './async-question-card';
+import { normalizeMessageQuote, type MessageQuote } from './message-quotes';
 
 const MessageBubble = lazy(() => import('./message-bubble').then((module) => ({
   default: module.MessageBubble,
@@ -46,7 +47,10 @@ type ConversationTimelineProps = {
   onReadTurnDiff: (turnId: string) => Promise<TurnDiffDocument>;
   onReadVisualization: (path: string) => Promise<string>;
   onReadPreviewImage: (path: string) => Promise<string>;
+  onQuoteAssistantText?: (quote: MessageQuote) => void;
 };
+
+type QuoteSelection = MessageQuote & { top: number; left: number };
 
 export const ConversationTimeline = memo(function ConversationTimeline({
   questionReplyDisabled = true,
@@ -74,8 +78,10 @@ export const ConversationTimeline = memo(function ConversationTimeline({
   onReadTurnDiff,
   onReadVisualization,
   onReadPreviewImage,
+  onQuoteAssistantText,
 }: ConversationTimelineProps) {
   const olderHistorySentinelRef = useRef<HTMLButtonElement | null>(null);
+  const [quoteSelection, setQuoteSelection] = useState<QuoteSelection | null>(null);
   const questionAnswers = useMemo(() => new Map(timeline.flatMap((item) => (
     item.kind === 'user' && (!item.transient || item.completedAt)
       ? (item.questionReplies || []).map((reply) => [reply.questionItemId, reply.answer] as const) : []
@@ -90,6 +96,65 @@ export const ConversationTimeline = memo(function ConversationTimeline({
   const awaitingVisibleHistory = Boolean(
     threadId && !timeline.length && historyLoading,
   );
+  const readQuoteSelection = useCallback(() => {
+    if (!onQuoteAssistantText || typeof window === 'undefined') {
+      setQuoteSelection(null);
+      return;
+    }
+    const selection = window.getSelection();
+    const root = messageContentRef.current;
+    if (!selection || selection.isCollapsed || selection.rangeCount !== 1 || !root) {
+      setQuoteSelection(null);
+      return;
+    }
+    const elementForNode = (node: Node | null) => (
+      node instanceof Element ? node : node?.parentElement
+    );
+    const startMessage = elementForNode(selection.anchorNode)?.closest<HTMLElement>('.message.assistant[data-quote-message-id]');
+    const endMessage = elementForNode(selection.focusNode)?.closest<HTMLElement>('.message.assistant[data-quote-message-id]');
+    if (!startMessage || startMessage !== endMessage || !root.contains(startMessage)) {
+      setQuoteSelection(null);
+      return;
+    }
+    const quote = normalizeMessageQuote({
+      sourceMessageId: startMessage.dataset.quoteMessageId || '',
+      text: selection.toString(),
+    });
+    if (!quote) {
+      setQuoteSelection(null);
+      return;
+    }
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    if (!rect.width && !rect.height) {
+      setQuoteSelection(null);
+      return;
+    }
+    setQuoteSelection({
+      ...quote,
+      top: Math.max(8, rect.top - 42),
+      left: Math.min(window.innerWidth - 72, Math.max(72, rect.left + rect.width / 2)),
+    });
+  }, [messageContentRef, onQuoteAssistantText]);
+
+  useEffect(() => {
+    if (!onQuoteAssistantText) return undefined;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const selectionChanged = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(readQuoteSelection, 80);
+    };
+    const hide = () => setQuoteSelection(null);
+    document.addEventListener('selectionchange', selectionChanged);
+    window.addEventListener('resize', hide);
+    return () => {
+      if (timer) clearTimeout(timer);
+      document.removeEventListener('selectionchange', selectionChanged);
+      window.removeEventListener('resize', hide);
+    };
+  }, [onQuoteAssistantText, readQuoteSelection]);
+
+  useEffect(() => setQuoteSelection(null), [threadId]);
   useEffect(() => {
     const root = messageListRef.current;
     const sentinel = olderHistorySentinelRef.current;
@@ -111,7 +176,10 @@ export const ConversationTimeline = memo(function ConversationTimeline({
   ]);
 
   return (
-    <div className="message-list" ref={messageListRef} onScroll={onScroll}>
+    <div className="message-list" ref={messageListRef} onScroll={(event) => {
+      setQuoteSelection(null);
+      onScroll(event);
+    }} onPointerUp={() => setTimeout(readQuoteSelection, 0)} onKeyUp={readQuoteSelection}>
       <div className="message-list-content" ref={messageContentRef}>
         {threadId && initialHistoryLoaded && nextCursor && (
           <button
@@ -174,6 +242,25 @@ export const ConversationTimeline = memo(function ConversationTimeline({
           ))}
         </Suspense>
       </div>
+      {quoteSelection && (
+        <button
+          className="selection-quote-action"
+          type="button"
+          style={{ top: quoteSelection.top, left: quoteSelection.left }}
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => {
+            onQuoteAssistantText?.({
+              sourceMessageId: quoteSelection.sourceMessageId,
+              text: quoteSelection.text,
+            });
+            window.getSelection()?.removeAllRanges();
+            setQuoteSelection(null);
+          }}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h4v4H7v5H5v-7a4 4 0 0 1 4-4h2M15 8h4v4h-4v5h-2v-7a4 4 0 0 1 4-4h2" /></svg>
+          {t('引用提问', 'Quote')}
+        </button>
+      )}
     </div>
   );
 });
