@@ -1520,7 +1520,8 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
     }
   }, [beginSecureChannel, cancelFileDownload, rejectPendingRequests, resetExecution, selectSession]);
 
-  const beginNewSession = useCallback(() => {
+  const beginNewSession = useCallback((cwd?: string) => {
+    if (cwd) setNewSessionCwd(cwd);
     setNewSessionPrompt('');
     setNewSessionImage(null);
     setNewSessionError('');

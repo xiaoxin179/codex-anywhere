@@ -112,6 +112,16 @@
   .environment-status-dot.online { background: #002fa7; box-shadow: none; }
   .compact-search { border: 1px solid #d4d4d8; border-radius: 0; color: #71717a; background: #fff; }
   .session-list { gap: 0; }
+  .session-project-group { border-bottom: 1px solid #d4d4d8; }
+  .session-project-head { grid-template-columns: minmax(0, 1fr) 32px; }
+  .session-project-toggle, .session-project-new { height: 38px; color: #71717a; }
+  .session-project-toggle { padding: 0 6px 0 4px; }
+  .session-project-toggle, .session-project-new { @include interaction.hover { color: #18181b; background: #fff; } }
+  .session-project-name { color: #18181b; font-size: 11px; font-weight: 700; letter-spacing: .01em; }
+  .session-project-count { min-width: 24px; color: #002fa7; font-size: 14px; font-weight: 700; }
+  .session-project-new { width: 32px; border-left: 1px solid #e4e4e7; }
+  .session-project-new:focus-visible, .session-project-toggle:focus-visible { outline: 2px solid #002fa7; outline-offset: -2px; }
+  .session-project-sessions { margin: 0 0 4px 12px; border-left-color: #d4d4d8; }
   .session-card {
     gap: 5px;
     padding: 11px 10px;

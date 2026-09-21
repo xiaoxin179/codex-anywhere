@@ -111,7 +111,7 @@ import {
   patchConversationExecution,
   resetConversationExecutionPresentation,
 } from '../web/src/conversation-execution.js';
-import { SessionSidebar } from '../web/src/session-sidebar.js';
+import { groupSessionsByProject, SessionSidebar } from '../web/src/session-sidebar.js';
 import { SessionRenameDialog } from '../web/src/session-rename-dialog.js';
 import {
   downloadCanContinue,
@@ -321,11 +321,31 @@ test('session sidebar sorts recent sessions and renders current execution state 
   assert.ok(markup.indexOf('Current task') < markup.indexOf('Older task'));
   assert.match(markup, /session-card active running/);
   assert.match(markup, />beta</);
+  assert.match(markup, /session-project-group expanded/);
+  assert.match(markup, /在 beta 中新建会话/);
   assert.match(markup, /environment-picker-select/);
   assert.match(markup, /aria-haspopup="listbox"/);
   assert.match(markup, /ECS · 24×7/);
   assert.match(markup, />在线</);
   assert.doesNotMatch(markup, /<select/);
+});
+
+test('session sidebar groups tasks by project path and keeps general tasks separate', () => {
+  const groups = groupSessionsByProject([
+    { id: 'alpha-old', title: 'Alpha old', cwd: 'D:\\work\\Alpha', updatedAt: 10 },
+    { id: 'general', title: 'General', updatedAt: 15 },
+    { id: 'alpha-new', title: 'Alpha new', cwd: 'd:\\work\\alpha\\', updatedAt: 30 },
+    { id: 'beta', title: 'Beta', cwd: 'D:\\work\\beta', updatedAt: 20 },
+  ]);
+  assert.deepEqual(groups.map((group) => ({
+    name: group.name,
+    count: group.sessions.length,
+    ids: group.sessions.map((session) => session.id),
+  })), [
+    { name: 'Alpha', count: 2, ids: ['alpha-new', 'alpha-old'] },
+    { name: 'beta', count: 1, ids: ['beta'] },
+    { name: '', count: 1, ids: ['general'] },
+  ]);
 });
 
 test('session rename dialog exposes a bounded mobile-friendly form', () => {
