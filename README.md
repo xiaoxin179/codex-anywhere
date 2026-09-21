@@ -1,52 +1,99 @@
 # Codex Anywhere
 
-> Project origin: this repository is a fork of [gaotong132/codex-anywhere](https://github.com/gaotong132/codex-anywhere). Thank you to gaotong132 for creating and open-sourcing the original project. Subsequent changes in this fork are maintained independently and do not represent an upstream release or support commitment.
+> **Origin and acknowledgements**
+>
+> This repository is a fork of [gaotong132/codex-anywhere](https://github.com/gaotong132/codex-anywhere). Thank you to **gaotong132** and all upstream contributors for designing and open-sourcing the original project. This fork continues that work with independent changes to the interface, remote controls, security model, device management, and mobile experience. These additions and deployment choices are maintained here and do not represent an upstream release or support commitment.
 
 English | [简体中文](README.zh-CN.md) · [MIT License](LICENSE)
 
-Codex Anywhere is a self-hosted remote interface for personal Codex use. A phone connects through a browser or the [separate Android client](https://github.com/xiaoxin179/codex-anywhere-app) to a relay, then establishes an encrypted channel to a Connector on your computer. **In the default personal setup, Codex and project files stay on your computer. The server provides access, device authentication, and routing; it does not run the Agent for your PC.**
+A self-hosted remote access layer for personal Codex use. It lets you view and continue Codex tasks from a phone browser or the separate Android client while Codex, source code, and the real execution environment remain on your own computer.
 
-This is an unofficial community project, not affiliated with or endorsed by OpenAI.
+> [!IMPORTANT]
+> This is an unofficial community project and is not affiliated with or endorsed by OpenAI. It is designed for one trusted user, not as a public multi-tenant service.
 
-## What this fork adds
+## Project model
 
-- A quieter Codex-inspired light interface with project groups, collapsible sessions, search, unread states, and a loading ring while a task is responding.
-- Mobile access to real Codex sessions: continue conversations, send text and images, follow progress, preview files and code changes, and download files after confirmation. Availability depends on the selected Codex environment.
-- Single-use pairing links with a configurable **1–60 minute** lifetime (10 minutes by default). Expiry does not disconnect a device that has already paired; it reconnects with its own device key.
-- Approved-device and connection-activity views, plus device revocation. Even after the relay approves a Connector, the PC owner can stop the local Connector and disable its automatic startup to refuse remote access.
-- A separately maintained Android client. It reads the server address and entry path from a complete pairing link rather than hard-coding an individual deployment, then hosts the same Web interface in a system WebView.
-- Environment-scoped sessions. An optional headless Linux execution node can be configured alongside Windows Codex Desktop, but is not required to operate Codex on your own PC.
+Codex Anywhere has three main parts:
 
-## How it works
+- **Relay server** — provides the public entry point, device authentication, presence, and encrypted traffic routing.
+- **Connector** — runs on your Windows or Linux computer, makes an outbound connection to the Relay, and communicates with the local Codex environment.
+- **Web / Android client** — displays tasks, sends messages, handles approvals, and manages sessions.
+
+The Relay is not the Codex execution host. In the default architecture, project files are not synchronized to the Relay for remote access, and the server does not keep a separate Codex conversation database.
 
 ```text
 Phone browser / Android app
-        │ HTTPS / WSS
-        ▼
-   Self-hosted relay (access, authentication, ciphertext routing)
-        ▲
-        │ Connector makes an outbound connection
-        │
-   Your Windows PC ── Codex Desktop / local project files
+          │
+          │ HTTPS / WSS
+          ▼
+     Self-hosted Relay
+ access · authentication · ciphertext routing
+          ▲
+          │ outbound Connector connection
+          │
+    Your Windows / Linux computer
+      Codex · project files · execution
 ```
 
-The PC needs no inbound port. The relay authenticates approved devices and routes encrypted messages; it does not store a Codex conversation database. Codex execution and file access happen on the selected Connector machine. An optional Linux Connector is a separate execution node and does not automatically take over Windows sessions.
+## What this fork adds
 
-## Security boundaries
+### Codex-inspired mobile interface
 
-- First-time phone access uses a single-use pairing link. After pairing, the device private key remains in browser or Android WebView site storage. The relay stores the approval and public key, not a recoverable pairing link or device private key.
-- Browser and Connector establish an authenticated end-to-end encrypted channel. Use HTTPS/WSS for public entry. A random entry path only discourages casual discovery; **it is not authentication**.
-- The relay remains trusted infrastructure: it serves Web code, manages device trust, and can observe connection timing and traffic size. Encryption cannot eliminate the consequences of a stolen device or a compromised browser, PC, or server.
-- When remote access is not needed, stop the local Connector and disable its automatic startup. Revoke lost phones on the relay. Never commit Connector credentials, private keys, pairing links, or personal deployment addresses.
-- Clearing the Android app's *cache* normally preserves pairing. Clearing *app data/storage* may delete the WebView device key and require pairing again.
+- A quiet light interface with navigation and information density adapted for phone screens.
+- Project grouping, collapsible sessions, search, unread states, and active-task indicators.
+- Loading animation while a task is still generating a response.
+- Text and image input, Markdown and code rendering, file previews, diffs, and visualization support.
+- Select text from one or more AI responses, attach it as quoted context, and ask a follow-up question.
 
-See the [security policy](docs/SECURITY.md) for the fuller threat model.
+### Pairing and device management
+
+- Single-use pairing links with a configurable **1–60 minute** lifetime and a 10-minute default.
+- Link expiry affects only unused first-time enrollment; it does not disconnect an already paired phone.
+- After enrollment, each client reconnects with its own device key instead of reusing the pairing link.
+- Approved-device views show presence, connection count, and recent activity, with explicit revocation.
+- A Connector also requires administrator approval on first connection; knowing the server address is not sufficient.
+
+### PC-side authority
+
+- The Connector uses an outbound connection, so the PC needs no public inbound port.
+- Relay approval does not remove local control: stopping the Connector lets the computer owner unilaterally refuse remote access.
+- Windows helper scripts can enable, disable, and report Connector state, including whether automatic startup is allowed.
+- Relay authorization and the local Connector switch must both permit access.
+
+### Android client
+
+The native wrapper is maintained separately at [xiaoxin179/codex-anywhere-app](https://github.com/xiaoxin179/codex-anywhere-app).
+
+- No personal server, pairing link, or credential is compiled into the APK.
+- The user enters a complete pairing link on first launch; the WebView then retains that device identity.
+- Re-pairing lives in the connection-status menu instead of occupying the main screen.
+- Most Web UI releases require only reopening the app, not installing a new APK.
+- Clearing cache normally preserves pairing; clearing app data or WebView storage may require pairing again.
+
+## Security model and boundaries
+
+- Browsers and Connectors use per-device keys. The Relay stores public keys, approvals, and necessary activity state—not device private keys.
+- A one-time enrollment secret travels in the URL fragment and becomes invalid after use. The Relay temporarily stores only its one-way verifier and expiry.
+- Browser and Connector establish an authenticated end-to-end encrypted channel; the Relay routes ciphertext.
+- Public entry must use HTTPS/WSS. A random entry path may reduce casual discovery, but **is not authentication**.
+- The Relay remains trusted infrastructure because it serves client code, manages device trust, and can observe timing and traffic size.
+- Revoke a lost phone promptly. Stop the local Connector whenever remote access is not needed.
+
+Never publish these values in this repository:
+
+- Real public IPs, administration ports, or private entry paths
+- Pairing links, Connector tokens, or device private keys
+- SSH or TLS private keys, certificate issuance material, or server login details
+- Local usernames, absolute personal paths, project contents, logs, or conversation data
+- Relay `.env`, device registries, or credential-bearing backups
+
+Read the full [security policy](docs/SECURITY.md) before exposing a deployment to the internet.
 
 ## Quick start
 
-Use a Linux host with Docker Engine and Docker Compose v2 as the relay, and a Windows PC with Codex Desktop/CLI, Node.js 22+, and PowerShell as the execution node. For public access, first provide a trusted HTTPS/WSS entry point. A domain is optional; an IP address with a port and matching certificate can also work. **Do not expose the relay's loopback service port directly to the internet.**
+### 1. Prepare the Relay
 
-Clone this fork and initialize the relay:
+Use a Linux host with Docker Engine and Docker Compose v2:
 
 ```bash
 git clone https://github.com/xiaoxin179/codex-anywhere.git
@@ -54,25 +101,38 @@ cd codex-anywhere
 ./scripts/relay.sh setup
 ```
 
-Then install the local Connector following the [deployment guide](docs/deployment.md). After its first connection, approve it on the relay and create a one-time pairing link:
+The public entry point must support HTTPS and WebSocket correctly. A domain is optional; an IP address with a port and a matching trusted certificate can also work. Do not expose the Relay's internal listening port directly to the internet.
+
+### 2. Install and approve the Connector
+
+Follow the [deployment guide](docs/deployment.md) on the computer that runs Codex. After its first connection, inspect and approve the pending device on the Relay host:
 
 ```bash
+./scripts/relay.sh pending
 ./scripts/relay.sh approve
+```
+
+### 3. Create a phone pairing link
+
+```bash
 ./scripts/relay.sh pair https://your-host.example:8443 10
 ```
 
-The address and port above are **placeholders**. Use your own HTTPS entry point, and do not paste a real pairing link into documentation or public chat. The lifetime argument is optional (default: 10 minutes; allowed range: 1–60).
+The address is a placeholder. Replace it with your own HTTPS entry point. The final argument is the lifetime in minutes; it is optional, accepts 1–60, and defaults to 10. Never paste a real pairing link into an issue, README, commit, or public chat.
 
-Manage approved devices with:
+### 4. Routine administration
 
 ```bash
+./scripts/relay.sh status
 ./scripts/relay.sh devices
 ./scripts/relay.sh revoke
 ```
 
-The independent [codex-anywhere-app](https://github.com/xiaoxin179/codex-anywhere-app) repository contains the Android source, build instructions, and pairing guidance. The APK does not need a compiled-in server address: paste a complete HTTPS pairing link on first launch. Web-interface updates generally do not require reinstalling the APK.
+On Windows, the installed Connector control helper can expose three operations: enable, disable, and show current status. Disabling should stop the running Connector and prevent automatic startup; enabling restores startup permission and launches it again.
 
-## Development and repository boundaries
+## Development
+
+Node.js 22 or newer is required:
 
 ```bash
 npm ci
@@ -80,6 +140,21 @@ npm run check
 npm run build
 ```
 
-Relay/Web/Connector source lives here; the native Android wrapper lives in its own repository. `build/` and `dist/` are generated output. See the [deployment guide](docs/deployment.md) for detailed configuration, optional Linux execution nodes, and maintenance commands; see the [browser extension guide](extension/README.md) for the optional extension.
+- Relay, Web, and Connector source live in this repository.
+- The native Android wrapper lives in its own repository.
+- `build/` and `dist/` are generated output, not hand-maintained source.
+- After protocol or authentication changes, update Relay, Web, and Connector together to avoid mixed revisions.
 
-This fork retains the upstream [MIT License](LICENSE) and original copyright notice. Thanks again to the upstream author and contributors.
+## Documentation
+
+- [Deployment guide](docs/deployment.md)
+- [Security policy](docs/SECURITY.md)
+- [Documentation index](docs/README.md)
+- [Browser extension](extension/README.md)
+- [Android client](https://github.com/xiaoxin179/codex-anywhere-app)
+
+## License
+
+This fork keeps the upstream [MIT License](LICENSE) and original copyright notice.
+
+Thanks again to the authors and contributors of [gaotong132/codex-anywhere](https://github.com/gaotong132/codex-anywhere). This fork would not exist without their open-source work.
