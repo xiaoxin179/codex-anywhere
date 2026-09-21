@@ -9,6 +9,7 @@ import {
   normalizeMessageQuote,
 } from '../web/src/message-quotes.js';
 import { MessageBubble } from '../web/src/message-bubble.js';
+import { buildSelectionSearchUrl, buildSelectionTranslateUrl } from '../web/src/selection-actions.js';
 
 test('selected assistant text becomes a bounded Markdown quote followed by the question', () => {
   assert.equal(buildQuotedPrompt('为什么这样设计？', [
@@ -36,4 +37,19 @@ test('only assistant message bodies expose a selection quote source', () => {
   }));
   assert.match(render('assistant'), /data-quote-message-id="assistant-message"/);
   assert.doesNotMatch(render('user'), /data-quote-message-id/);
+});
+
+test('selection search and translation URLs encode bounded selected text', () => {
+  const search = new URL(buildSelectionSearchUrl('A & B'));
+  assert.equal(search.hostname, 'www.google.com');
+  assert.equal(search.searchParams.get('q'), 'A & B');
+
+  const translation = new URL(buildSelectionTranslateUrl('测试内容', 'en'));
+  assert.equal(translation.hostname, 'translate.google.com');
+  assert.equal(translation.searchParams.get('sl'), 'auto');
+  assert.equal(translation.searchParams.get('tl'), 'en');
+  assert.equal(translation.searchParams.get('text'), '测试内容');
+
+  const bounded = new URL(buildSelectionSearchUrl('x'.repeat(2_000))).searchParams.get('q') || '';
+  assert.equal(bounded.length, 1_200);
 });

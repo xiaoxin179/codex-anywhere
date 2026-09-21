@@ -882,26 +882,46 @@ input:not([type='range']):focus, textarea:focus { border-color: $focus !importan
 .message-image figcaption span { min-width: 0; @include truncate; }
 .message-image figcaption button { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; border: 0; padding: 2px 0; color: #8cb5ff; background: transparent; font: inherit; cursor: pointer; }
 .message-image figcaption button svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
-.selection-quote-action {
+.selection-action-toolbar {
   position: fixed;
   z-index: 85;
-  height: 32px;
-  display: inline-flex;
+  display: flex;
+  max-width: calc(100vw - 16px);
   align-items: center;
-  gap: 6px;
-  padding: 0 11px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
   border: 1px solid #40516d;
   border-radius: 8px;
   color: #eef4ff;
   background: #18243a;
   box-shadow: 0 8px 24px rgba(0, 0, 0, .28);
-  font-size: 11px;
-  font-weight: 700;
   transform: translateX(-50%);
   touch-action: manipulation;
 }
-.selection-quote-action svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.selection-quote-action { @include interaction.hover { border-color: #6798ff; background: #223a67; } }
+.selection-action-toolbar::-webkit-scrollbar { display: none; }
+.selection-action-toolbar button {
+  height: 36px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-right: 1px solid #40516d;
+  padding: 0 12px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.selection-action-toolbar button:last-child { border-right: 0; }
+.selection-action-toolbar button { @include interaction.hover { background: #223a67; } }
+.selection-action-toolbar button.primary { color: #fff; background: #315ea8; }
+.selection-action-toolbar button.primary { @include interaction.hover { background: #223a67; } }
+.selection-action-toolbar svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .message-image-state { display: grid; min-height: 96px; place-items: center; padding: 12px; color: #8b98aa; font-size: 11px; }
 .image-lightbox { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: max(52px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom)); background: rgba(2, 5, 10, .92); backdrop-filter: blur(8px); cursor: zoom-out; }
 .image-lightbox > img { display: block; width: auto; max-width: 100%; height: auto; max-height: calc(100dvh - 92px); object-fit: contain; border-radius: 8px; box-shadow: 0 18px 72px rgba(0, 0, 0, .5); cursor: default; }

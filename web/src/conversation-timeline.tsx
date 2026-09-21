@@ -11,6 +11,7 @@ import type { TextPreviewDocument, TurnDiffDocument } from './app-types';
 import type { QuestionReply } from '../../src/shared/async-questions';
 import { AsyncQuestionCard } from './async-question-card';
 import { normalizeMessageQuote, type MessageQuote } from './message-quotes';
+import { buildSelectionSearchUrl, buildSelectionTranslateUrl } from './selection-actions';
 
 const MessageBubble = lazy(() => import('./message-bubble').then((module) => ({
   default: module.MessageBubble,
@@ -52,6 +53,22 @@ type ConversationTimelineProps = {
 
 type QuoteSelection = MessageQuote & { top: number; left: number };
 
+async function copySelectionText(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const input = document.createElement('textarea');
+  input.value = text;
+  input.setAttribute('readonly', '');
+  input.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+  document.body.appendChild(input);
+  input.select();
+  const copied = document.execCommand('copy');
+  input.remove();
+  if (!copied) throw new Error('copy failed');
+}
+
 export const ConversationTimeline = memo(function ConversationTimeline({
   questionReplyDisabled = true,
   onQuestionReply,
@@ -82,6 +99,7 @@ export const ConversationTimeline = memo(function ConversationTimeline({
 }: ConversationTimelineProps) {
   const olderHistorySentinelRef = useRef<HTMLButtonElement | null>(null);
   const [quoteSelection, setQuoteSelection] = useState<QuoteSelection | null>(null);
+  const [selectionCopyState, setSelectionCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const questionAnswers = useMemo(() => new Map(timeline.flatMap((item) => (
     item.kind === 'user' && (!item.transient || item.completedAt)
       ? (item.questionReplies || []).map((reply) => [reply.questionItemId, reply.answer] as const) : []
@@ -130,10 +148,14 @@ export const ConversationTimeline = memo(function ConversationTimeline({
       setQuoteSelection(null);
       return;
     }
+    const toolbarHalfWidth = Math.min(280, Math.max(0, (window.innerWidth - 16) / 2));
+    const rangeCenter = rect.left + rect.width / 2;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    setSelectionCopyState('idle');
     setQuoteSelection({
       ...quote,
-      top: Math.max(8, rect.top - 42),
-      left: Math.min(window.innerWidth - 72, Math.max(72, rect.left + rect.width / 2)),
+      top: spaceBelow >= 54 ? rect.bottom + 10 : Math.max(8, rect.top - 46),
+      left: Math.min(window.innerWidth - toolbarHalfWidth - 8, Math.max(toolbarHalfWidth + 8, rangeCenter)),
     });
   }, [messageContentRef, onQuoteAssistantText]);
 
@@ -155,6 +177,23 @@ export const ConversationTimeline = memo(function ConversationTimeline({
   }, [onQuoteAssistantText, readQuoteSelection]);
 
   useEffect(() => setQuoteSelection(null), [threadId]);
+  const selectWholeAssistantMessage = useCallback(() => {
+    if (!quoteSelection) return;
+    const message = Array.from(messageContentRef.current?.querySelectorAll<HTMLElement>(
+      '.message.assistant[data-quote-message-id]',
+    ) || []).find((candidate) => candidate.dataset.quoteMessageId === quoteSelection.sourceMessageId);
+    if (!message) return;
+    const range = document.createRange();
+    range.selectNodeContents(message);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    setTimeout(readQuoteSelection, 0);
+  }, [messageContentRef, quoteSelection, readQuoteSelection]);
+
+  const openSelectionAction = useCallback((url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, []);
   useEffect(() => {
     const root = messageListRef.current;
     const sentinel = olderHistorySentinelRef.current;
@@ -243,23 +282,53 @@ export const ConversationTimeline = memo(function ConversationTimeline({
         </Suspense>
       </div>
       {quoteSelection && (
-        <button
-          className="selection-quote-action"
-          type="button"
+        <div
+          className="selection-action-toolbar"
           style={{ top: quoteSelection.top, left: quoteSelection.left }}
           onPointerDown={(event) => event.preventDefault()}
-          onClick={() => {
-            onQuoteAssistantText?.({
-              sourceMessageId: quoteSelection.sourceMessageId,
-              text: quoteSelection.text,
-            });
-            window.getSelection()?.removeAllRanges();
-            setQuoteSelection(null);
-          }}
+          role="toolbar"
+          aria-label={t('所选文字操作', 'Selected text actions')}
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h4v4H7v5H5v-7a4 4 0 0 1 4-4h2M15 8h4v4h-4v5h-2v-7a4 4 0 0 1 4-4h2" /></svg>
-          {t('引用提问', 'Quote')}
-        </button>
+          <button type="button" onClick={() => void copySelectionText(quoteSelection.text)
+            .then(() => setSelectionCopyState('copied'))
+            .catch(() => setSelectionCopyState('failed'))}>
+            {selectionCopyState === 'copied'
+              ? t('已复制', 'Copied')
+              : selectionCopyState === 'failed'
+                ? t('复制失败', 'Copy failed')
+                : t('复制', 'Copy')}
+          </button>
+          {typeof navigator.share === 'function' && (
+            <button type="button" onClick={() => void navigator.share({ text: quoteSelection.text }).catch(() => undefined)}>
+              {t('分享', 'Share')}
+            </button>
+          )}
+          <button type="button" onClick={selectWholeAssistantMessage}>{t('全选回复', 'Select reply')}</button>
+          <button type="button" onClick={() => openSelectionAction(buildSelectionSearchUrl(quoteSelection.text))}>
+            {t('网页搜索', 'Web search')}
+          </button>
+          <button type="button" onClick={() => openSelectionAction(buildSelectionTranslateUrl(
+            quoteSelection.text,
+            t('zh-CN', 'en'),
+          ))}>
+            {t('翻译', 'Translate')}
+          </button>
+          <button
+            className="primary"
+            type="button"
+            onClick={() => {
+              onQuoteAssistantText?.({
+                sourceMessageId: quoteSelection.sourceMessageId,
+                text: quoteSelection.text,
+              });
+              window.getSelection()?.removeAllRanges();
+              setQuoteSelection(null);
+            }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h4v4H7v5H5v-7a4 4 0 0 1 4-4h2M15 8h4v4h-4v5h-2v-7a4 4 0 0 1 4-4h2" /></svg>
+            {t('引用提问', 'Quote')}
+          </button>
+        </div>
       )}
     </div>
   );

@@ -275,8 +275,11 @@
     color: #f4f4f5;
     background: #09090b;
   }
-  .selection-quote-action { border-color: #002fa7; border-radius: 6px; color: #fff; background: #002fa7; box-shadow: 0 8px 22px rgba(24,24,27,.16); }
-  .selection-quote-action { @include interaction.hover { border-color: #18181b; background: #18181b; } }
+  .selection-action-toolbar { border-color: #d4d4d8; border-radius: 6px; color: #27272a; background: #fff; box-shadow: 0 8px 22px rgba(24,24,27,.16); }
+  .selection-action-toolbar button { border-right-color: #e4e4e7; }
+  .selection-action-toolbar button { @include interaction.hover { color: #002fa7; background: #f7f7f8; } }
+  .selection-action-toolbar button.primary { color: #fff; background: #002fa7; }
+  .selection-action-toolbar button.primary { @include interaction.hover { color: #fff; background: #18181b; } }
   .message.assistant pre code {
     border: 0;
     color: inherit;
