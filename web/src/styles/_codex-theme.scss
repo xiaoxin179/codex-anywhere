@@ -147,7 +147,13 @@
   .session-meta { min-width: auto; gap: 5px; color: #a1a1aa; font-size: 9px; }
   .session-project, .session-project.placeholder, .empty-list { color: #71717a; }
   .session-running-dot, .session-unread-dot { width: 5px; height: 5px; background: #002fa7; box-shadow: none; }
-  .session-loading-spinner { width: 13px; height: 13px; border-color: rgba(0, 47, 167, .18); border-top-color: #002fa7; }
+  .session-loading-spinner {
+    width: 16px;
+    height: 16px;
+    border-color: #d4d4d8;
+    border-top-color: #002fa7;
+    border-right-color: #002fa7;
+  }
 
   @media (hover: none) {
     .session-project-new { opacity: .58; }

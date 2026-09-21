@@ -365,7 +365,17 @@ input:not([type='range']):focus, textarea:focus { border-color: $focus !importan
 }
 .session-running-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: $success; box-shadow: 0 0 0 0 rgba(57, 201, 121, .4); animation: session-running-pulse 1.6s ease-out infinite; }
 .session-unread-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: #6ea8ff; box-shadow: 0 0 0 2px rgba(110, 168, 255, .2); }
-.session-loading-spinner { width: 13px; height: 13px; flex: 0 0 13px; border: 1.5px solid rgba(110, 168, 255, .24); border-top-color: #6ea8ff; border-radius: 50%; animation: session-loading-spin .72s linear infinite; }
+.session-loading-spinner {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border: 2px solid rgba(110, 168, 255, .22);
+  border-top-color: #6ea8ff;
+  border-right-color: #6ea8ff;
+  border-radius: 50%;
+  animation: session-loading-spin .7s linear infinite;
+  will-change: transform;
+}
 .session-meta time { flex: 0 0 auto; margin-left: auto; }
 .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 .presence i { position: relative; z-index: 3; width: 7px; height: 7px; border-radius: 50%; background: #5b6575; }
@@ -1227,7 +1237,7 @@ input:not([type='range']):focus, textarea:focus { border-color: $focus !importan
 @keyframes run-details-arrive { from { opacity: .4; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   .startup-shell::before, .startup-shell::after, .startup-orbit, .startup-orbit i, .startup-mark i, .startup-pulse i,
-  .presence.running::before, .presence.running::after, .presence.waiting::before, .session-running-dot, .session-loading-spinner,
+  .presence.running::before, .presence.running::after, .presence.waiting::before, .session-running-dot,
   .message.live, .message.assistant.final-arriving, .message.assistant.live::after, .progress-card.live, .progress-card.live::after,
   .tool-purpose, .tool-purpose::before,
   .tool-purpose .status-change, .activity-complete-check, .typewriter-caret::after, .run-details-sheet,
