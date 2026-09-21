@@ -2030,9 +2030,9 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
       <main className="login-shell">
         <section className="login-card">
           <div className="brand-mark">C</div>
-          <p className="eyebrow">PRIVATE BRIDGE</p>
+          <p className="eyebrow">CODEX ANYWHERE</p>
           <h1>{t('连接 Codex Anywhere', 'Connect to Codex Anywhere')}</h1>
-          <p className="login-copy">{t('使用管理员生成的十分钟单次配对链接连接这台设备。', 'Connect this device with a ten-minute, single-use pairing link from the administrator.')}</p>
+          <p className="login-copy">{t('使用管理员生成的一次性配对链接连接这台设备。', 'Connect this device with a single-use pairing link from the administrator.')}</p>
           <button type="button" className="pair-device-button" onClick={() => setPairingDialogOpen(true)}>
             {connecting ? t('连接中…', 'Connecting…') : t('输入配对链接', 'Enter pairing link')}
           </button>

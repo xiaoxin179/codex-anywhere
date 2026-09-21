@@ -1,6 +1,7 @@
 @use './styles/tokens' as *;
 @use './styles/responsive';
 @use './styles/interaction';
+@use './styles/codex-theme';
 @use './async-question-card.css';
 
 :root {
@@ -1274,3 +1275,4 @@ input:not([type='range']):focus, textarea:focus { border-color: $focus !importan
 .drawer-backdrop { display: none; }
 
 @include responsive.mobile;
+@include codex-theme.apply;

@@ -128,7 +128,7 @@ export function PairingDialog({ open, value, onValueChange, pairing, status, err
       <section className="pairing-dialog" role="dialog" aria-modal="true" aria-labelledby="pairing-title">
         <header>
           <div>
-            <p className="eyebrow">SECURE PAIRING</p>
+            <p className="eyebrow">CODEX ANYWHERE</p>
             <h2 id="pairing-title">{t('配对这台设备', 'Pair this device')}</h2>
           </div>
           <button type="button" aria-label={t('关闭', 'Close')} onClick={() => { stopCamera(); onClose(); }}>×</button>
