@@ -146,7 +146,9 @@ test('presence indicator renders context usage as a compact outer ring', () => {
   assert.match(markup, /--context-ring-color:#e39661/);
   assert.match(markup, /data-context-percent="82"/);
   assert.match(markup, /上下文 82%/);
-  assert.match(markup, /presence-context-popover/);
+  assert.match(markup, /aria-haspopup="menu"/);
+  assert.match(markup, /aria-expanded="false"/);
+  assert.doesNotMatch(markup, /presence-context-popover/);
   assert.match(markup, /^<div class="presence-cluster"/);
 });
 

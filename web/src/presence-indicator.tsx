@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { ContextUsage } from '../../src/shared/context-compaction';
 import type { AccountRateLimit, AccountUsage } from '../../src/shared/account-usage';
 import type { ExecutionState } from './app-types';
@@ -11,6 +11,7 @@ type PresenceIndicatorProps = {
   statusText: string;
   contextUsage: ContextUsage | null;
   accountUsage?: AccountUsage | null;
+  onRePair?: () => void;
 };
 
 const CONTEXT_RING_COLOR_STOPS = [
@@ -72,7 +73,25 @@ export function PresenceIndicator({
   statusText,
   contextUsage,
   accountUsage = null,
+  onRePair,
 }: PresenceIndicatorProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const controlRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const closeOutside = (event: PointerEvent) => {
+      if (!controlRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [menuOpen]);
   const stateLabel = presenceLabel(online, executionState, statusText);
   const { percent, detail } = contextUsagePresentation(contextUsage);
   const contextLabel = detail
@@ -113,33 +132,53 @@ export function PresenceIndicator({
           })}
         </div>
       )}
-      <button
-        type="button"
-        className={`presence ${online ? 'online' : 'offline'} ${online ? executionState : ''}`}
-        style={ringStyle}
-        aria-live="polite"
-        aria-label={label}
-        title={label}
-        data-context-percent={percent ?? undefined}
-      >
-        <svg className="presence-context-ring" viewBox="0 0 30 30" aria-hidden="true">
-          <circle className="presence-context-track" cx="15" cy="15" r="12.5" pathLength="100" />
-          {percent !== null && (
-            <circle
-              className="presence-context-value"
-              cx="15"
-              cy="15"
-              r="12.5"
-              pathLength="100"
-              strokeDasharray={`${percent} ${100 - percent}`}
-              transform="rotate(-90 15 15)"
-            />
-          )}
-        </svg>
-        <i aria-hidden="true" />
-        {contextLabel && <span className="presence-context-popover" aria-hidden="true">{contextLabel}</span>}
-        <span className="visually-hidden">{label}</span>
-      </button>
+      <div className="presence-control" ref={controlRef}>
+        <button
+          type="button"
+          className={`presence ${online ? 'online' : 'offline'} ${online ? executionState : ''}`}
+          style={ringStyle}
+          aria-live="polite"
+          aria-label={label}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          title={label}
+          data-context-percent={percent ?? undefined}
+          onClick={() => setMenuOpen((current) => !current)}
+        >
+          <svg className="presence-context-ring" viewBox="0 0 30 30" aria-hidden="true">
+            <circle className="presence-context-track" cx="15" cy="15" r="12.5" pathLength="100" />
+            {percent !== null && (
+              <circle
+                className="presence-context-value"
+                cx="15"
+                cy="15"
+                r="12.5"
+                pathLength="100"
+                strokeDasharray={`${percent} ${100 - percent}`}
+                transform="rotate(-90 15 15)"
+              />
+            )}
+          </svg>
+          <i aria-hidden="true" />
+          <span className="visually-hidden">{label}</span>
+        </button>
+        {menuOpen && (
+          <div className="presence-menu" role="menu">
+            <div className="presence-menu-status">
+              <strong>{stateLabel}</strong>
+              {contextLabel && <small>{contextLabel}</small>}
+            </div>
+            {onRePair && (
+              <button type="button" role="menuitem" onClick={() => {
+                setMenuOpen(false);
+                onRePair();
+              }}>
+                {t('重新配对', 'Pair again')}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

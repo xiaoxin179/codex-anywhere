@@ -148,6 +148,13 @@
     backdrop-filter: blur(10px);
   }
   .presence-cluster { flex: 0 0 auto; display: flex; align-items: center; gap: 9px; }
+  .presence-menu { border-color: #d4d4d8; border-radius: 4px; color: #52525b; background: #fff; box-shadow: 0 12px 28px rgba(24, 24, 27, .12); }
+  .presence-menu-status { border-color: #e4e4e7; }
+  .presence-menu-status strong { color: #18181b; }
+  .presence-menu-status small { color: #71717a; }
+  .presence-menu > button { color: #27272a; }
+  .presence-menu > button { @include interaction.hover { color: #002fa7; background: #f7f7f8; } }
+  .presence-menu > button:focus-visible { outline-color: #002fa7; }
   .account-usage { display: grid; gap: 4px; }
   .account-limit {
     --account-limit-remaining: 0%;

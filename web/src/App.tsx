@@ -1530,6 +1530,12 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
     setDrawerOpen(false);
     setNewSessionDialogOpen(true);
   }, []);
+  const beginRePairing = useCallback(() => {
+    setPairingInput('');
+    setPairingError('');
+    setDrawerOpen(false);
+    setPairingDialogOpen(true);
+  }, []);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   const renameSession = useCallback(async (name: string) => {
@@ -2089,6 +2095,29 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
         onSelect={selectSession}
       />
 
+      {pairingDialogOpen && (
+        <Suspense fallback={null}>
+          <PairingDialog
+            open
+            value={pairingInput}
+            onValueChange={(value) => { setPairingInput(value); setPairingError(''); }}
+            pairing={Boolean(pairingCredential)}
+            status={statusText}
+            error={pairingError}
+            onCancel={() => stopPairing()}
+            onClose={() => {
+              if (pairingCredentialRef.current) stopPairing('', false);
+              else {
+                setPairingInput('');
+                setPairingError('');
+                setPairingDialogOpen(false);
+              }
+            }}
+            onPair={pairBrowser}
+          />
+        </Suspense>
+      )}
+
       {newSessionDialogOpen && (
         <div
           className="new-session-overlay"
@@ -2261,6 +2290,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
             statusText={statusText}
             contextUsage={contextUsage}
             accountUsage={accountUsage}
+            onRePair={beginRePairing}
           />
         </header>
 

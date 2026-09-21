@@ -542,7 +542,7 @@ input:not([type='range']):focus, textarea:focus { border-color: $focus !importan
   color: #9aa6b8;
   background: rgba(20, 26, 37, .75);
   appearance: none;
-  cursor: help;
+  cursor: pointer;
 
   .presence-context-ring {
     position: absolute;
@@ -564,31 +564,6 @@ input:not([type='range']):focus, textarea:focus { border-color: $focus !importan
     transition: stroke .28s ease, stroke-dasharray .28s ease, filter .28s ease;
     filter: drop-shadow(0 0 2px var(--context-ring-glow, rgba(89, 151, 255, .38)));
   }
-  .presence-context-popover {
-    position: absolute;
-    z-index: 5;
-    top: calc(100% + 9px);
-    right: 0;
-    width: max-content;
-    max-width: min(260px, calc(100vw - 24px));
-    padding: 7px 9px;
-    border: 1px solid #2b3a51;
-    border-radius: 8px;
-    color: #b9c7da;
-    background: rgba(14, 20, 31, .97);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
-    font-size: 10px;
-    line-height: 1.35;
-    text-align: right;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(-3px);
-    transition: opacity .15s ease, transform .15s ease;
-  }
-  @include interaction.hover { .presence-context-popover { opacity: 1; transform: translateY(0); } }
-  &:focus .presence-context-popover { opacity: 1; transform: translateY(0); }
-
   &.online {
     border-color: rgba(75, 126, 225, .55);
     background: rgba(44, 91, 181, .12);
@@ -628,6 +603,28 @@ input:not([type='range']):focus, textarea:focus { border-color: $focus !importan
     background: rgba(112, 31, 41, .18);
     i { background: #ef6672; box-shadow: 0 0 8px rgba(239, 102, 114, .4); }
   }
+}
+.presence-control { position: relative; flex: 0 0 auto; }
+.presence-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 9px);
+  right: 0;
+  width: 190px;
+  overflow: hidden;
+  border: 1px solid #2b3a51;
+  border-radius: 8px;
+  color: #b9c7da;
+  background: #0e141f;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .35);
+}
+.presence-menu-status { display: grid; gap: 3px; padding: 10px 12px; border-bottom: 1px solid #2b3a51; }
+.presence-menu-status strong { color: #e2e9f3; font-size: 11px; }
+.presence-menu-status small { color: #8291a8; font-size: 9px; line-height: 1.4; }
+.presence-menu > button {
+  width: 100%; padding: 10px 12px; border: 0; color: #b9c7da; background: transparent; font-size: 11px; text-align: left;
+  @include interaction.hover { color: #fff; background: #172131; }
+  &:focus-visible { outline: 2px solid #6798ff; outline-offset: -2px; }
 }
 @keyframes presence-orbit { to { transform: rotate(360deg); } }
 @keyframes presence-breathe { 0% { transform: scale(.7); opacity: .9; } 75%, 100% { transform: scale(1.55); opacity: 0; } }
