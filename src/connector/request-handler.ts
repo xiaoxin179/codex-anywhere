@@ -17,6 +17,7 @@ type CodexGateway = {
   child: unknown;
   activeTurn: unknown;
   listSessions(options: Payload): Promise<any[]>;
+  readAccountUsage?(): Promise<any>;
   readSession(threadId: string): Promise<any>;
   renameSession(threadId: string, name: unknown): Promise<any>;
   listSessionTurns(threadId: string, options: Payload): Promise<any>;
@@ -147,6 +148,7 @@ async function dispatchAction({
   }
   if (action === 'sessions.list') {
     const sessions = await codex.listSessions({ cwd: payload.cwd });
+    const accountUsage = await codex.readAccountUsage?.();
     const desktopThreads = getDesktopThreads();
     refreshDesktopThreads(sessions[0]?.id);
     return {
@@ -155,6 +157,7 @@ async function dispatchAction({
         desktopThreads,
         String((codex.activeTurn as { threadId?: unknown } | null)?.threadId || ''),
       ),
+      ...(accountUsage ? { accountUsage } : {}),
     };
   }
   if (action === 'session.read') return codex.readSession(String(payload.threadId || ''));

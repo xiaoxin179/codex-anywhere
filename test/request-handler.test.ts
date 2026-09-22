@@ -386,6 +386,19 @@ test('session listing returns immediately and merges asynchronously cached Deskt
   assert.equal((await locallyActive(request('sessions.list'))).data.sessions[0].status, 'active');
 });
 
+test('session listing returns connector-wide account usage', async () => {
+  const accountUsage = {
+    limits: [{ usedPercent: 18, windowMinutes: 300 }],
+    updatedAt: Date.now(),
+  };
+  const handle = createRequestHandler(createDependencies({
+    codex: { readAccountUsage: async () => accountUsage },
+  }));
+  const response = await handle(request('sessions.list'));
+  assert.equal(response.ok, true);
+  assert.deepEqual(response.data.accountUsage, accountUsage);
+});
+
 test('session listing coalesces Desktop status refreshes while one is in flight', async () => {
   const sessions = [{ id: 'thread-1', status: 'notLoaded' }];
   let desktopCalls = 0;

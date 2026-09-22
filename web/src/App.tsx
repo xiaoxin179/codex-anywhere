@@ -123,6 +123,7 @@ import {
   type ContextUsage,
 } from '../../src/shared/context-compaction';
 import {
+  newestAccountUsage,
   normalizeAccountUsage,
   type AccountUsage,
 } from '../../src/shared/account-usage';
@@ -239,6 +240,12 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
   const [historyLoading, setHistoryLoading] = useState(false);
   const [olderHistoryError, setOlderHistoryError] = useState(false);
   const [olderHistoryAutoLoadEnabled, setOlderHistoryAutoLoadEnabled] = useState(false);
+
+  const updateAccountUsage = useCallback((value: unknown) => {
+    const candidate = normalizeAccountUsage(value);
+    if (!candidate) return;
+    setAccountUsage((current) => newestAccountUsage(current, candidate) || null);
+  }, []);
   const [initialHistoryLoaded, setInitialHistoryLoaded] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
@@ -623,8 +630,9 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
     if (sessionRefreshInFlightRef.current) return [];
     sessionRefreshInFlightRef.current = true;
     try {
-      const data = await request<{ sessions: Session[] }>('sessions.list', {});
+      const data = await request<{ sessions: Session[]; accountUsage?: AccountUsage }>('sessions.list', {});
       const nextSessions = data.sessions || [];
+      updateAccountUsage(data.accountUsage);
       setSessions(nextSessions);
       setSessionsInitialized(true);
       const currentThreadId = threadIdRef.current;
@@ -642,7 +650,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
     } finally {
       sessionRefreshInFlightRef.current = false;
     }
-  }, [request, updateSessionAttention]);
+  }, [request, updateAccountUsage, updateSessionAttention]);
 
   const beginSecureChannel = useCallback((routeDeviceId = environmentIdRef.current) => {
     const socket = socketRef.current;
@@ -1277,7 +1285,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
       else {
         const state = snapshot || page;
         setContextUsage(normalizeContextUsage(state.contextUsage) || normalizeContextUsage(page.contextUsage) || null);
-        setAccountUsage(normalizeAccountUsage(state.accountUsage) || normalizeAccountUsage(page.accountUsage) || null);
+        updateAccountUsage(state.accountUsage || page.accountUsage);
         autoFollowLatestRef.current = true;
         shouldScrollBottomRef.current = true;
         for (const item of items) {
@@ -1316,7 +1324,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
     } finally {
       if (selectedRequestRef.current === requestVersion) setHistoryLoading(false);
     }
-  }, [reportTimelineError, request, updateExecution]);
+  }, [reportTimelineError, request, updateAccountUsage, updateExecution]);
 
   useEffect(() => {
     if (!threadId) {
@@ -1346,8 +1354,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
         if (disposed || threadIdRef.current !== threadId) return;
         const nextContextUsage = normalizeContextUsage(page.contextUsage);
         if (nextContextUsage) setContextUsage(nextContextUsage);
-        const nextAccountUsage = normalizeAccountUsage(page.accountUsage);
-        if (nextAccountUsage) setAccountUsage(nextAccountUsage);
+        updateAccountUsage(page.accountUsage);
         const fingerprint = historyFingerprint(page.turns, page.turnProgress);
         const previousFingerprint = followFingerprintRef.current;
         const changed = Boolean(previousFingerprint && previousFingerprint !== fingerprint);
@@ -1428,7 +1435,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
       disposed = true;
       if (timer) clearTimeout(timer);
     };
-  }, [initialHistoryLoaded, online, request, running, threadId, updateExecution]);
+  }, [initialHistoryLoaded, online, request, running, threadId, updateAccountUsage, updateExecution]);
 
   useEffect(() => {
     if (authenticated && online) preloadMessageBubble();
@@ -1454,7 +1461,6 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
     if (nextThreadId) storeEnvironmentValue(LAST_THREAD_KEY, environmentIdRef.current, nextThreadId);
     setTimeline([]);
     setContextUsage(null);
-    setAccountUsage(null);
     preserveScrollHeightRef.current = null;
     olderHistoryLoadingRef.current = false;
     setAttachmentUrls({});
@@ -1497,6 +1503,7 @@ export default function App({ initialPairingInput = null }: { initialPairingInpu
     runningRef.current = false;
     ownedTurnThreadIdRef.current = null;
     setOnline(false);
+    setAccountUsage(null);
     setEnvironmentId(nextEnvironmentId);
     environmentIdRef.current = nextEnvironmentId;
     storeSelectedEnvironmentId(nextEnvironmentId);

@@ -50,6 +50,7 @@ import {
   type TurnDiffDocument,
 } from './turn-diffs.js';
 import { loadSessionModelSettings, saveSessionModelSettings } from './session-model-settings.js';
+import { newestAccountUsage, type AccountUsage } from '../shared/account-usage.js';
 
 const RPC_TIMEOUT_MS = 20_000;
 const SUMMARY_LIMIT = 4_000;
@@ -140,6 +141,8 @@ export class CodexAppServer extends EventEmitter {
   sessionPermissionModes: Map<string, PermissionMode>;
   modelCatalogCache: { expiresAt: number; models: ModelOption[] } | null;
   turnDiffs: Map<string, TurnDiffDocument>;
+  private accountUsage: AccountUsage | undefined;
+  private accountUsageScan: Promise<AccountUsage | undefined> | null;
 
   constructor(options: CodexAppServerOptions = {}) {
     super();
@@ -165,6 +168,8 @@ export class CodexAppServer extends EventEmitter {
     this.sessionPermissionModes = new Map();
     this.modelCatalogCache = null;
     this.turnDiffs = new Map();
+    this.accountUsage = undefined;
+    this.accountUsageScan = null;
   }
 
   async ensureStarted(): Promise<void> {
@@ -253,6 +258,37 @@ export class CodexAppServer extends EventEmitter {
     }).filter((thread: JsonObject) => thread.id);
   }
 
+  async readAccountUsage(): Promise<AccountUsage | undefined> {
+    if (this.accountUsageScan) return this.accountUsageScan;
+    const scan = this.scanAccountUsage();
+    this.accountUsageScan = scan;
+    try { return await scan; } finally {
+      if (this.accountUsageScan === scan) this.accountUsageScan = null;
+    }
+  }
+
+  private rememberAccountUsage(candidate: AccountUsage | undefined) {
+    this.accountUsage = newestAccountUsage(this.accountUsage, candidate);
+    return this.accountUsage;
+  }
+
+  private async scanAccountUsage(): Promise<AccountUsage | undefined> {
+    if (!this.sessionMetadata.size) await this.listSessions();
+    const paths = [...new Set([...this.sessionMetadata.values()].map((metadata) => metadata.path).filter(Boolean))];
+    const files = (await Promise.all(paths.map(async (path) => {
+      try { return { path, modifiedAt: (await stat(path)).mtimeMs }; } catch { return null; }
+    }))).filter((entry): entry is { path: string; modifiedAt: number } => Boolean(entry))
+      .sort((left, right) => right.modifiedAt - left.modifiedAt);
+    let latest = this.accountUsage;
+    for (const file of files) {
+      const latestUpdatedAt = Number(latest?.updatedAt);
+      if (Number.isFinite(latestUpdatedAt) && latestUpdatedAt >= file.modifiedAt) break;
+      const candidate = await readRolloutAccountUsage(file.path).catch(() => undefined);
+      latest = newestAccountUsage(latest, candidate);
+    }
+    return this.rememberAccountUsage(latest);
+  }
+
   async readSession(threadId: string) {
     await this.ensureStarted();
     const result = await this.rpcRaw('thread/read', { threadId, includeTurns: false });
@@ -327,6 +363,7 @@ export class CodexAppServer extends EventEmitter {
           readRolloutAccountUsage(metadata.path).catch(() => undefined),
         ])
         : [undefined, undefined];
+      const latestAccountUsage = this.rememberAccountUsage(accountUsage);
       const rawTurns = Array.isArray(result?.data) ? result.data : [];
       const hydratedTurns = mode === 'conversation'
         ? await this.hydrateInjectedTurnInputs(resolvedThreadId, rawTurns)
@@ -348,7 +385,7 @@ export class CodexAppServer extends EventEmitter {
         truncated: false,
         source: 'appServer',
         contextUsage,
-        accountUsage,
+        accountUsage: latestAccountUsage,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -409,6 +446,9 @@ export class CodexAppServer extends EventEmitter {
   ) {
     if (!filePath) throw new Error('session_history_unavailable');
     const page = await readRolloutTail({ filePath, threadId, ...options });
+    const accountUsage = options.cursor
+      ? page.accountUsage
+      : this.rememberAccountUsage(page.accountUsage);
     let compactionStartedAt: number | null = null;
     if (!options.cursor && page.turns[0]?.status === 'inProgress' && page.activityId) {
       if (this.activeTurn?.threadId === threadId && this.activeTurn.turnId === page.activityId) {
@@ -421,7 +461,7 @@ export class CodexAppServer extends EventEmitter {
         compactionStartedAt = progress?.startedAt || null;
       }
     }
-    return { ...page, compactionStartedAt };
+    return { ...page, accountUsage, compactionStartedAt };
   }
 
   async readTurnDiff(threadId: unknown, turnId: unknown) {

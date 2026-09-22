@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import {
-  appendFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile,
+  appendFile, mkdir, mkdtemp, readFile, rm, symlink, utimes, writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -40,6 +40,7 @@ import {
 } from '../src/shared/turn-progress.js';
 import { summarizeToolActivity } from '../src/shared/activity-detail.js';
 import { normalizeSessionName } from '../src/shared/session-name.js';
+import { newestAccountUsage } from '../src/shared/account-usage.js';
 import { CodexAppServer, internals } from '../src/connector/codex-app-server.js';
 import {
   CodexDesktopClient,
@@ -150,6 +151,43 @@ test('presence indicator renders context usage as a compact outer ring', () => {
   assert.match(markup, /aria-expanded="false"/);
   assert.doesNotMatch(markup, /presence-context-popover/);
   assert.match(markup, /^<div class="presence-cluster"/);
+});
+
+test('account usage keeps the newest cross-session snapshot and permits later resets', () => {
+  const newest = { limits: [{ usedPercent: 40, windowMinutes: 300 }], updatedAt: 2_000 };
+  const older = { limits: [{ usedPercent: 80, windowMinutes: 300 }], updatedAt: 1_000 };
+  const reset = { limits: [{ usedPercent: 3, windowMinutes: 300 }], updatedAt: 3_000 };
+  assert.equal(newestAccountUsage(newest, older), newest);
+  assert.equal(newestAccountUsage(newest, reset), reset);
+});
+
+test('connector resolves account usage globally instead of from the selected session', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'codex-anywhere-account-usage-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const olderPath = join(directory, 'older.jsonl');
+  const newerPath = join(directory, 'newer.jsonl');
+  const base = Date.now() - 30_000;
+  const usageRow = (timestamp: number, fiveHour: number, weekly: number) => `${JSON.stringify({
+    timestamp: new Date(timestamp).toISOString(),
+    type: 'event_msg',
+    payload: { type: 'token_count', rate_limits: {
+      primary: { used_percent: fiveHour, window_minutes: 300 },
+      secondary: { used_percent: weekly, window_minutes: 10_080 },
+    } },
+  })}\n`;
+  await writeFile(olderPath, usageRow(base, 70, 60));
+  await writeFile(newerPath, usageRow(base + 5_000, 20, 10));
+  await utimes(olderPath, new Date(base + 1_000), new Date(base + 1_000));
+  await utimes(newerPath, new Date(base + 6_000), new Date(base + 6_000));
+
+  const codex = new CodexAppServer({ runtimeCwd: directory });
+  codex.sessionMetadata.set('older', { cwd: directory, path: olderPath, canAcceptDirectInput: true });
+  codex.sessionMetadata.set('newer', { cwd: directory, path: newerPath, canAcceptDirectInput: true });
+  assert.deepEqual((await codex.readAccountUsage())?.limits.map((limit) => limit.usedPercent), [20, 10]);
+
+  await writeFile(olderPath, usageRow(base + 10_000, 3, 12));
+  await utimes(olderPath, new Date(base + 11_000), new Date(base + 11_000));
+  assert.deepEqual((await codex.readAccountUsage())?.limits.map((limit) => limit.usedPercent), [3, 12]);
 });
 
 test('account limits show only available five-hour and weekly remaining quotas', () => {

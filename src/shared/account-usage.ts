@@ -9,6 +9,19 @@ export type AccountUsage = {
   updatedAt?: number | null;
 };
 
+export function newestAccountUsage(
+  current: AccountUsage | null | undefined,
+  candidate: AccountUsage | null | undefined,
+): AccountUsage | undefined {
+  if (!candidate) return current || undefined;
+  if (!current) return candidate;
+  const currentUpdatedAt = finiteTimestamp(current.updatedAt);
+  const candidateUpdatedAt = finiteTimestamp(candidate.updatedAt);
+  if (candidateUpdatedAt === undefined) return currentUpdatedAt === undefined ? candidate : current;
+  if (currentUpdatedAt === undefined || candidateUpdatedAt >= currentUpdatedAt) return candidate;
+  return current;
+}
+
 export function normalizeAccountUsage(value: unknown): AccountUsage | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const candidate = value as Partial<AccountUsage>;
