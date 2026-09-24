@@ -1389,6 +1389,13 @@ function accountUsageFromRow(row: RolloutRow): AccountUsage | undefined {
   if (row?.type !== 'event_msg' || payload.type !== 'token_count') return undefined;
   const rateLimits = payload.rate_limits || payload.info?.rate_limits;
   if (!rateLimits || typeof rateLimits !== 'object') return undefined;
+  const limitId = typeof rateLimits.limit_id === 'string'
+    ? rateLimits.limit_id.trim().toLowerCase()
+    : '';
+  // Newer Codex versions emit several independent quota buckets. Only the
+  // Codex bucket represents the quota shown in the app; keep accepting rows
+  // without a limit id for compatibility with older rollout logs.
+  if (limitId && limitId !== 'codex') return undefined;
   const limits = [rateLimits.primary, rateLimits.secondary].flatMap((value) => {
     if (!value || typeof value !== 'object') return [];
     const usedPercent = boundedPercent(value.used_percent);

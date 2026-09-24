@@ -1075,6 +1075,43 @@ test('rate limits expose only bounded account windows and omit unrelated account
   assert.equal(JSON.stringify(usage).includes('must-not-leak'), false);
 });
 
+test('rate limits ignore non-Codex quota buckets', () => {
+  const usage = rolloutInternals.accountUsageFromRow({
+    timestamp: '2026-09-21T03:22:00.000Z',
+    type: 'event_msg',
+    payload: { type: 'token_count', rate_limits: {
+      limit_id: 'base_model_inference',
+      primary: { used_percent: 0, window_minutes: 10_080 },
+    } },
+  });
+  assert.equal(usage, undefined);
+});
+
+test('latest account usage skips newer non-Codex quota buckets', () => {
+  const usage = rolloutInternals.latestAccountUsage([
+    {
+      timestamp: '2026-09-21T03:21:00.000Z',
+      type: 'event_msg',
+      payload: { type: 'token_count', rate_limits: {
+        limit_id: 'codex',
+        primary: { used_percent: 31, window_minutes: 10_080 },
+      } },
+    },
+    {
+      timestamp: '2026-09-21T03:22:00.000Z',
+      type: 'event_msg',
+      payload: { type: 'token_count', rate_limits: {
+        limit_id: 'base_model_inference',
+        primary: { used_percent: 0, window_minutes: 10_080 },
+      } },
+    },
+  ]);
+  assert.deepEqual(usage, {
+    limits: [{ usedPercent: 31, windowMinutes: 10_080 }],
+    updatedAt: Date.parse('2026-09-21T03:21:00.000Z'),
+  });
+});
+
 test('rollout history keeps complete final replies while bounding progress updates', () => {
   const longText = '完整回复。'.repeat(1_000);
   const items = rolloutInternals.mapRolloutRows([
